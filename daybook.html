@@ -533,28 +533,33 @@ body:not(.show-map) .page-map, body:not(.show-map) .page-cities { display: none;
 .page-tab[aria-selected="true"] { background: var(--accent); color: var(--on-accent); }
 @media (max-width: 560px) { .page-tabs { position: static; margin-top: 8px; align-self: flex-start; } .top { flex-wrap: wrap; } }
 
-/* Daily Update page: four equal windows at N/E/S/W, a small canary in the gap between them. */
+/* Daily Update page: four equal windows at N/W/E/S, touching corner to corner, with a small canary in the gap. */
 .board[data-layout="daily"] { display: block; background: none; box-shadow: none; border-radius: 0; overflow: visible; }
 .daily-stage {
   display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); grid-template-rows: repeat(3, minmax(0, 1fr));
   grid-template-areas: ". n ." "w c e" ". s .";
-  gap: 10px; height: 100%; min-height: 0; border-radius: var(--radius); position: relative;
+  gap: 0; height: 100%; min-height: 0; position: relative;
 }
 .dwin {
-  background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius);
+  background: var(--surface); border: 1px solid var(--line);
   box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .03); padding: 12px; box-sizing: border-box; min-width: 0; min-height: 0;
   display: flex; flex-direction: column; gap: 6px;
 }
-.dwin.mine { box-shadow: 0 0 0 2px var(--accent) inset; }
-.dwin.n { grid-area: n; } .dwin.e { grid-area: e; } .dwin.s { grid-area: s; } .dwin.w { grid-area: w; }
+/* Each window's two inner corners (facing the canary) are square so they meet their neighbour exactly; the outer two stay rounded. */
+.dwin.n { grid-area: n; border-radius: var(--radius) var(--radius) 0 0; }
+.dwin.w { grid-area: w; border-radius: var(--radius) 0 0 var(--radius); }
+.dwin.e { grid-area: e; border-radius: 0 var(--radius) var(--radius) 0; }
+.dwin.s { grid-area: s; border-radius: 0 0 var(--radius) var(--radius); }
 .dwin-head { display: flex; align-items: center; }
+.dwin-name { font-weight: 700; color: var(--muted); }
 .dwin-body { flex: 1; min-height: 0; overflow: auto; display: flex; flex-direction: column; justify-content: center; }
 .dwin-text { margin: 0; overflow-wrap: anywhere; white-space: pre-wrap; }
 .dwin-empty { margin: 0; }
 .dwin-time { font-size: .76em; color: var(--muted); margin-top: 4px; }
 .dwin-queued { align-self: flex-start; font-size: .76em; font-weight: 700; color: var(--warn); background: var(--warn-bg); border-radius: 999px; padding: 2px 10px; }
 @media (max-width: 720px) {
-  .daily-stage { grid-template-columns: minmax(0, 1fr); grid-template-rows: none; grid-template-areas: "n" "w" "e" "s"; }
+  .daily-stage { grid-template-columns: minmax(0, 1fr); grid-template-rows: none; grid-template-areas: "n" "w" "e" "s"; gap: 10px; }
+  .daily-stage .dwin { border-radius: var(--radius); }
   .canary-wrap { display: none; }
 }
 
@@ -579,13 +584,14 @@ body:not(.show-map) .page-map, body:not(.show-map) .page-cities { display: none;
   @keyframes cn-note { 0% { opacity: 0; transform: translateY(4px) scale(.8); } 25% { opacity: 1; } 100% { opacity: 0; transform: translateY(-22px) scale(1.15); } }
 }
 
-/* Daily Update desk */
-.dq-row { display: flex; gap: 8px; align-items: center; }
-.dq-row .field { width: auto; flex: none; }
-.dq-chip { display: flex; align-items: center; gap: 6px; background: var(--surface-2); border-radius: 999px; padding: 4px 6px 4px 12px; font-size: .9em; margin: 0; }
-#in-daily { flex: 1; padding-right: 36px; background: transparent; border-color: var(--line); }
-#in-daily-q { flex: 1; background: transparent; border-color: var(--line); }
-#in-daily:focus, #in-daily-q:focus { border-color: var(--accent); background: transparent; }
+/* Daily Update desk: one field, posted now or queued for later via the clock button's modal. */
+.panel.daily { grid-template-columns: minmax(0, 1fr); }
+#in-daily { background: transparent; border-color: var(--line); resize: vertical; }
+#in-daily:focus { border-color: var(--accent); background: transparent; }
+.daily-actions { display: flex; align-items: center; gap: 8px; }
+.clock-btn { border: 1px solid var(--line); }
+.clock-btn:hover { border-color: var(--accent); }
+.dq-chip { display: flex; align-items: center; gap: 6px; background: var(--surface-2); border-radius: 999px; padding: 4px 6px 4px 12px; font-size: .9em; margin: 0; align-self: flex-start; }
 </style>
 
 <div class="page-map" aria-hidden="true">
@@ -654,6 +660,9 @@ body:not(.show-map) .page-map, body:not(.show-map) .page-cities { display: none;
 <div id="settingsScrim" class="scrim" hidden data-act="scrim">
   <section class="sheet narrow" id="settings" role="dialog" aria-modal="true" aria-labelledby="settingsTitle"></section>
 </div>
+<div id="queueScrim" class="scrim" hidden data-act="scrim">
+  <section class="sheet narrow" id="queueSheet" role="dialog" aria-modal="true" aria-labelledby="queueTitle"></section>
+</div>
 <div id="toast" class="toast" role="status" hidden></div>
 
 <script src="avatars.js"></script>
@@ -706,9 +715,11 @@ body:not(.show-map) .page-map, body:not(.show-map) .page-cities { display: none;
     teal: ["#2d6a6f", "#7cc4c4"], indigo: ["#3d4fb8", "#a0abf2"], plum: ["#7a3b78", "#d79bd4"],
     rust: ["#9a4a1c", "#eea27a"], olive: ["#56691f", "#b8d070"], slate: ["#3f5466", "#a7bccd"],
   };
-  const DEFAULT_PREFS = { sound: true, map: false, accent: "teal", theme: "system", layout: "grid", size: "m", order: SEAT_KEYS.slice(), hidden: [], paper: "yellow" };
-  // The Daily Update page's four windows sit fixed at north/east/south/west; unlike the board's quads, this isn't rearrangeable (yet).
-  const DAILY_POS = [["matt", "n"], ["robert", "e"], ["grace", "s"], ["daniel", "w"]];
+  // The Daily Update page's four windows sit at north/west/east/south; which teammate is where is a per-viewer
+  // preference (dailyOrder), rearranged the same way the board's quad positions are.
+  const DAILY_POS_SLOTS = ["n", "w", "e", "s"];
+  const DAILY_DEFAULT_ORDER = ["matt", "robert", "grace", "daniel"];
+  const DEFAULT_PREFS = { sound: true, map: false, accent: "teal", theme: "system", layout: "grid", size: "m", order: SEAT_KEYS.slice(), dailyOrder: DAILY_DEFAULT_ORDER.slice(), hidden: [], paper: "yellow" };
 
   const S = {
     db: null, user: null, myId: null, readOnly: false, ready: false,
@@ -720,8 +731,7 @@ body:not(.show-map) .page-map, body:not(.show-map) .page-cities { display: none;
     history: { open: false, days: [], q: "", loading: false, selDate: null, token: 0, who: null },
     page: LS.get("daybook.page", "board") === "daily" ? "daily" : "board",
     dailyDraft: LS.get("daybook.dailyDraft", "") || "",
-    dailyQDraft: LS.get("daybook.dailyQDraft", "") || "",
-    dailyQTime: "",
+    dailyQTime: "", queueOpen: false, dailySwapPick: null,
     dailySeen: {},
   };
 
@@ -755,6 +765,7 @@ body:not(.show-map) .page-map, body:not(.show-map) .page-cities { display: none;
     enter: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 5v7a3 3 0 0 1-3 3H5"/><path d="M9 11l-4 4 4 4"/></svg>',
     pencil: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16z"/></svg>',
     bubble: '<svg class="upd-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z"/></svg>',
+    clock: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></svg>',
   };
 
   /* ---------- members ---------- */
@@ -1047,6 +1058,11 @@ body:not(.show-map) .page-map, body:not(.show-map) .page-cities { display: none;
   }
 
   /* ---------- the daily update page ---------- */
+  // Which teammate sits at which of the four positions, for this viewer.
+  function dailyViewOrder() {
+    const o = Array.isArray(S.prefs.dailyOrder) ? S.prefs.dailyOrder : [];
+    return o.length === SEAT_KEYS.length && SEAT_KEYS.every((k) => o.includes(k)) ? o.slice() : DAILY_DEFAULT_ORDER.slice();
+  }
   // A teammate's own current day doc, same lookup the board quads use: mine is the live local draft, theirs is their latest synced day.
   function teammateDayDoc(key) {
     const m = holderOf(key);
@@ -1083,7 +1099,7 @@ body:not(.show-map) .page-map, body:not(.show-map) .page-cities { display: none;
   </svg>`;
   function dailyWindowHTML(key, pos) {
     const m = holderOf(key), name = SEAT_NAME[key];
-    if (!m) return `<section class="dwin ${pos}" data-key="${key}"><div class="dwin-head">${nameTagHTML(key)}</div><div class="dwin-body"><p class="dwin-empty muted">Hasn't joined yet.</p></div></section>`;
+    if (!m) return `<section class="dwin ${pos}" data-key="${key}"><div class="dwin-head"><span class="dwin-name">${esc(name)}</span></div><div class="dwin-body"><p class="dwin-empty muted">Hasn't joined yet.</p></div></section>`;
     const isMe = m.id === S.myId;
     const doc = teammateDayDoc(key);
     const vis = visibleDaily(doc);
@@ -1092,8 +1108,8 @@ body:not(.show-map) .page-map, body:not(.show-map) .page-cities { display: none;
     const body = vis
       ? `<p class="dwin-text">${esc(vis.text)}</p><span class="dwin-time">${fmtTime(vis.at)}</span>`
       : `<p class="dwin-empty muted">No update yet today.</p>`;
-    return `<section class="dwin ${pos}${isMe ? " mine" : ""}" data-key="${key}" aria-label="${esc(name)}'s daily update">
-      <div class="dwin-head">${nameTagHTML(key)}</div>
+    return `<section class="dwin ${pos}" data-key="${key}" aria-label="${esc(name)}'s daily update">
+      <div class="dwin-head"><span class="dwin-name">${esc(name)}</span></div>
       <div class="dwin-body">${body}</div>
       ${queuedPending ? `<span class="dwin-queued">Queued for ${fmtTime(queue.showAt)}</span>` : ""}
     </section>`;
@@ -1101,7 +1117,7 @@ body:not(.show-map) .page-map, body:not(.show-map) .page-cities { display: none;
   // Fires the canary's reaction when any window's visible text changes (first render just records state, it doesn't react).
   function checkCanaryReveals() {
     let changed = false;
-    for (const [key] of DAILY_POS) {
+    for (const key of SEAT_KEYS) {
       const vis = visibleDaily(teammateDayDoc(key));
       const sig = vis ? vis.at + ":" + vis.text.length : "";
       if (S.dailySeen[key] !== undefined && S.dailySeen[key] !== sig && sig) changed = true;
@@ -1123,9 +1139,10 @@ body:not(.show-map) .page-map, body:not(.show-map) .page-cities { display: none;
     const board = $("#board");
     board.dataset.layout = "daily";
     if (!S.ready || !S.db) { board.innerHTML = `<div class="daily-stage"><p class="muted">${S.ready ? "Open this page on claude.ai, signed in, to see updates." : "Loading…"}</p></div>`; return; }
+    const order = dailyViewOrder();
     keepFocus(() => {
       board.innerHTML = `<div class="daily-stage">
-        ${DAILY_POS.map(([key, pos]) => dailyWindowHTML(key, pos)).join("")}
+        ${order.map((key, i) => dailyWindowHTML(key, DAILY_POS_SLOTS[i])).join("")}
         <div class="canary-wrap"><button type="button" class="canary" data-act="canary-poke" aria-label="Poke the canary">${CANARY_SVG}</button></div>
       </div>`;
     });
@@ -1144,29 +1161,34 @@ body:not(.show-map) .page-map, body:not(.show-map) .page-cities { display: none;
   addEventListener("pointermove", (ev) => { if (S.page === "daily") trackCanary(ev.clientX, ev.clientY); });
   function renderDailyPanel(P) {
     const doc = myTodayDoc() || {};
-    const daily = doc.daily, queue = doc.dailyQueue;
+    const queue = doc.dailyQueue;
     const queuedPending = queue && queue.showAt > Date.now();
-    P.className = "panel";
+    P.className = "panel daily";
     keepFocus(() => {
       P.innerHTML = `<div class="desk-col">
           <div class="desk-col-head"><button type="button" class="av-btn" data-act="open-settings" aria-label="Change your avatar">${badge(mySeat())}</button><label class="lbl" for="in-daily">Today's update</label></div>
-          <div class="upd-box"><textarea id="in-daily" class="field" maxlength="1500" aria-label="Today's update">${esc(S.dailyDraft || "")}</textarea><button type="button" class="upd-send" data-act="daily-post" aria-label="Post now">${IC.enter}</button></div>
-          ${daily && daily.text ? `<p class="muted" style="margin:4px 0 0">Live since ${fmtTime(daily.postedAt)}.</p>` : ""}
-        </div>
-        <div class="desk-col">
-          <div class="desk-col-head"><span class="lbl">Queue for later</span></div>
-          ${queuedPending
-            ? `<p class="dq-chip">Queued for ${fmtTime(queue.showAt)} — “${esc(queue.text.length > 70 ? queue.text.slice(0, 70) + "…" : queue.text)}”<button type="button" class="mini-btn" data-act="daily-queue-cancel" aria-label="Cancel the queued update">${IC.close}</button></p>`
-            : `<div class="upd-box"><textarea id="in-daily-q" class="field" maxlength="1500" aria-label="Update text to queue">${esc(S.dailyQDraft || "")}</textarea></div>
-               <div class="dq-row"><input type="time" id="in-daily-time" class="field" value="${esc(S.dailyQTime || "")}" aria-label="Time to show it"><button type="button" class="btn small primary" data-act="daily-queue-set">${IC.plus} Queue it</button></div>
-               <p class="muted" style="margin:0;font-size:.85em">If that time has already passed today, it'll show tomorrow instead.</p>`}
+          <textarea id="in-daily" class="field" maxlength="1500" rows="4" aria-label="Today's update">${esc(S.dailyDraft || "")}</textarea>
+          <div class="daily-actions">
+            <button type="button" class="btn primary small" data-act="daily-post">${IC.enter} Post now</button>
+            <button type="button" class="mini-btn clock-btn" data-act="daily-queue-open" aria-label="Queue for a later time" title="Queue for later">${IC.clock}</button>
+          </div>
+          ${queuedPending ? `<p class="dq-chip">Queued for ${fmtTime(queue.showAt)} — “${esc(queue.text.length > 70 ? queue.text.slice(0, 70) + "…" : queue.text)}”<button type="button" class="mini-btn" data-act="daily-queue-cancel" aria-label="Cancel the queued update">${IC.close}</button></p>` : ""}
         </div>`;
     });
+  }
+  function renderQueueSheet() {
+    if (!S.queueOpen) return;
+    $("#queueSheet").innerHTML = `<div class="sheet-head"><h2 id="queueTitle">Queue for later</h2>
+        <button class="icon-btn" type="button" data-act="close" aria-label="Close">${IC.close}</button></div>
+      <div class="group"><label class="lbl" for="in-daily-time">Show it at</label>
+        <input type="time" id="in-daily-time" class="field" value="${esc(S.dailyQTime || "")}" aria-label="Time to show it">
+        <p class="muted" style="margin:6px 0 0;font-size:.85em">If that time has already passed today, it'll show tomorrow instead.</p></div>
+      <div class="who-row"><button type="button" class="btn primary" data-act="daily-queue-set">${IC.clock} Queue it</button></div>`;
   }
   function postDaily(text) {
     const t = (text || "").trim();
     if (!t || !canWrite()) return;
-    saveDay((d) => { d.daily = { text: t.slice(0, 1500), postedAt: Date.now() }; }, { panel: true });
+    saveDay((d) => { d.daily = { text: t.slice(0, 1500), postedAt: Date.now() }; delete d.dailyQueue; }, { panel: true });
     S.dailyDraft = ""; LS.set("daybook.dailyDraft", "");
     const ta = $("#in-daily"); if (ta) ta.value = "";
     SFX.thud();
@@ -1174,14 +1196,16 @@ body:not(.show-map) .page-map, body:not(.show-map) .page-cities { display: none;
   }
   function queueDaily() {
     if (!canWrite()) return;
-    const text = (S.dailyQDraft || "").trim(), time = S.dailyQTime;
-    if (!text || !time) { toast("Add an update and pick a time first."); return; }
+    const text = (S.dailyDraft || "").trim(), time = S.dailyQTime;
+    if (!text || !time) { toast("Pick a time first."); return; }
     const [hh, mm] = time.split(":").map(Number);
     const at = new Date(); at.setHours(hh, mm, 0, 0);
     let showAt = at.getTime();
     if (showAt <= Date.now()) showAt += 24 * 3600 * 1000;
     saveDay((d) => { d.dailyQueue = { text: text.slice(0, 1500), showAt }; }, { panel: true });
-    S.dailyQDraft = ""; LS.set("daybook.dailyQDraft", ""); S.dailyQTime = "";
+    S.dailyDraft = ""; LS.set("daybook.dailyDraft", ""); S.dailyQTime = "";
+    const ta = $("#in-daily"); if (ta) ta.value = "";
+    closeSheets();
     toast(`Queued for ${fmtTime(showAt)}.`);
   }
   function cancelDailyQueue() {
@@ -2166,6 +2190,9 @@ body:not(.show-map) .page-map, body:not(.show-map) .page-cities { display: none;
       <div class="group"><span class="lbl">Positions</span>
         <div class="positions" role="group" aria-label="Board positions">${order.map((k, i) => `<button type="button" data-act="swap" data-seat="${k}" aria-pressed="${S.swapPick === k}">${esc(SEAT_NAME[k])}<small>${["Top left", "Top right", "Bottom left", "Bottom right"][i]}</small></button>`).join("")}</div>
         <span class="muted" style="font-size:.88em">${S.swapPick ? `Now tap where ${esc(SEAT_NAME[S.swapPick])} should go.` : ""}</span></div>
+      <div class="group"><span class="lbl">Daily Update positions</span>
+        <div class="positions" role="group" aria-label="Daily Update positions">${dailyViewOrder().map((k, i) => `<button type="button" data-act="daily-swap" data-seat="${k}" aria-pressed="${S.dailySwapPick === k}">${esc(SEAT_NAME[k])}<small>${["North", "West", "East", "South"][i]}</small></button>`).join("")}</div>
+        <span class="muted" style="font-size:.88em">${S.dailySwapPick ? `Now tap where ${esc(SEAT_NAME[S.dailySwapPick])} should go.` : ""}</span></div>
       <div class="group"><span class="lbl">New note color</span><div class="swatches">${Object.entries(PAPERS).map(([k, c]) => `<button class="swatch" type="button" data-act="pref" data-k="paper" data-v="${k}" aria-pressed="${p.paper === k}" aria-label="${k}" style="background:${c}"></button>`).join("")}</div></div>
       <div class="group"><span class="lbl">Accent</span><div class="swatches">${Object.entries(ACCENTS).map(([k, c]) => `<button class="swatch" type="button" data-act="pref" data-k="accent" data-v="${k}" aria-pressed="${p.accent === k}" aria-label="${k}" style="background:linear-gradient(135deg, ${c[0]} 50%, ${c[1]} 50%)"></button>`).join("")}</div></div>
       <div class="group"><span class="lbl">Background</span>${seg("map", [["false", "Plain"], ["true", "Map"]])}</div>
@@ -2175,9 +2202,9 @@ body:not(.show-map) .page-map, body:not(.show-map) .page-cities { display: none;
 
   /* ---------- events ---------- */
   function closeSheets() {
-    $("#historyScrim").hidden = true; $("#settingsScrim").hidden = true;
+    $("#historyScrim").hidden = true; $("#settingsScrim").hidden = true; $("#queueScrim").hidden = true;
     closeBoardZoom();
-    S.history.open = false; S.settingsOpen = false; S.confirmLeave = false; S.swapPick = null;
+    S.history.open = false; S.settingsOpen = false; S.confirmLeave = false; S.swapPick = null; S.queueOpen = false; S.dailySwapPick = null;
   }
   document.addEventListener("click", (ev) => {
     const b = ev.target.closest("[data-act]");
@@ -2190,8 +2217,26 @@ body:not(.show-map) .page-map, body:not(.show-map) .page-cities { display: none;
       case "close": closeSheets(); break;
       case "page": { const p = b.dataset.page === "daily" ? "daily" : "board"; if (p !== S.page) { S.page = p; LS.set("daybook.page", p); renderAll(); } break; }
       case "daily-post": { const ta = $("#in-daily"); if (ta && ta.value.trim()) postDaily(ta.value); break; }
+      case "daily-queue-open": {
+        const ta = $("#in-daily");
+        if (ta) { S.dailyDraft = ta.value; LS.set("daybook.dailyDraft", ta.value); }
+        if (!(S.dailyDraft || "").trim()) { toast("Write your update first."); break; }
+        S.queueOpen = true; $("#queueScrim").hidden = false; renderQueueSheet();
+        setTimeout(() => $("#in-daily-time")?.focus(), 50);
+        break;
+      }
       case "daily-queue-set": queueDaily(); break;
       case "daily-queue-cancel": cancelDailyQueue(); break;
+      case "daily-swap": {
+        const k = b.dataset.seat;
+        if (!S.dailySwapPick || S.dailySwapPick === k) { S.dailySwapPick = S.dailySwapPick === k ? null : k; renderSettings(); break; }
+        const o = dailyViewOrder();
+        const i = o.indexOf(S.dailySwapPick), j = o.indexOf(k);
+        [o[i], o[j]] = [o[j], o[i]];
+        S.dailySwapPick = null;
+        setPref("dailyOrder", o);
+        break;
+      }
       case "canary-poke": canaryReact(); break;
       case "join": join(b.dataset.seat); break;
       case "add-note": addNote(); break;
@@ -2272,9 +2317,6 @@ body:not(.show-map) .page-map, body:not(.show-map) .page-cities { display: none;
     } else if (t.id === "in-daily") {
       S.dailyDraft = t.value;
       LS.set("daybook.dailyDraft", t.value);
-    } else if (t.id === "in-daily-q") {
-      S.dailyQDraft = t.value;
-      LS.set("daybook.dailyQDraft", t.value);
     } else if (t.id === "in-daily-time") {
       S.dailyQTime = t.value;
     } else if (t.id === "in-search") { S.history.q = t.value; renderHistory(); }
