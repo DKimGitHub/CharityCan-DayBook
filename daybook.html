@@ -617,6 +617,13 @@ button.dwin-text:hover { background: color-mix(in srgb, var(--fg) 7%, transparen
 .dq-row-chip { display: flex; align-items: center; gap: 4px; align-self: flex-end; }
 .dq-chip { background: var(--surface-2); border: 0; border-radius: 999px; padding: 5px 12px; font-size: .9em; margin: 0; cursor: pointer; font-family: inherit; color: inherit; text-align: left; }
 .dq-chip:hover { background: var(--line); }
+
+/* Cork page: a shared corkboard of post-its under four fixed topics instead of four people. */
+.topic-tag { padding-left: 12px; }
+.panel.cork { grid-template-columns: minmax(0, 1fr); }
+.cnote { padding-top: calc(var(--nw) * .3); }
+.note-av { position: absolute; left: calc(var(--nw) * .08); top: calc(var(--nw) * .2); width: max(16px, calc(var(--nw) * .15)); height: max(16px, calc(var(--nw) * .15)); }
+.note-av .av { width: 100%; height: 100%; font-size: .7em; }
 </style>
 
 <div class="page-map" aria-hidden="true">
@@ -648,6 +655,10 @@ button.dwin-text:hover { background: color-mix(in srgb, var(--fg) 7%, transparen
       <button class="rail-btn page-btn" type="button" data-act="page" data-page="daily" aria-pressed="false">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"/></svg>
         <span>Daily</span>
+      </button>
+      <button class="rail-btn page-btn" type="button" data-act="page" data-page="cork" aria-pressed="false">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="9" r="3.4"/><path d="M12 12.4V21"/></svg>
+        <span>Cork</span>
       </button>
       </div>
       <div class="rail-group mid">
@@ -748,6 +759,13 @@ button.dwin-text:hover { background: color-mix(in srgb, var(--fg) 7%, transparen
   const DAILY_POS_SLOTS = ["n", "w", "e", "s"];
   const DAILY_DEFAULT_ORDER = ["matt", "robert", "grace", "daniel"];
   const DEFAULT_PREFS = { sound: true, map: false, accent: "teal", theme: "system", layout: "grid", size: "m", order: SEAT_KEYS.slice(), dailyOrder: DAILY_DEFAULT_ORDER.slice(), hidden: [], paper: "yellow" };
+  // Cork is a shared corkboard: everyone can pin notes under any of these four topics (not one area per person).
+  const CORK_TOPICS = [["logistics", "Logistics"], ["sales", "Sales"], ["marketing", "Marketing"], ["development", "Development"]];
+  const CORK_TOPIC_NAME = Object.fromEntries(CORK_TOPICS);
+  const CORK_TOPIC_KEYS = CORK_TOPICS.map(([k]) => k);
+  const MAX_CORK_NOTES = 60;
+  // Board, Daily Update and Cork sit left to right, so switching pages slides toward whichever side the target is on.
+  const PAGE_ORDER = ["board", "daily", "cork"];
 
   const S = {
     db: null, user: null, myId: null, readOnly: false, ready: false,
@@ -757,10 +775,12 @@ button.dwin-text:hover { background: color-mix(in srgb, var(--fg) 7%, transparen
     updDraft: LS.get("daybook.updDraft", "") || "",
     swapPick: null, confirmLeave: false, metaSyncing: false, settingsOpen: false,
     history: { open: false, days: [], q: "", loading: false, selDate: null, token: 0, who: null },
-    page: LS.get("daybook.page", "board") === "daily" ? "daily" : "board",
+    page: PAGE_ORDER.includes(LS.get("daybook.page", "board")) ? LS.get("daybook.page", "board") : "board",
     dailyDraft: LS.get("daybook.dailyDraft", "") || "",
     dailyQTime: "", queueOpen: false, dailySwapPick: null,
     dailySeen: {},
+    cork: { notes: [], ready: false, sub: null },
+    corkDrag: null,
   };
 
   /* ---------- dates ---------- */
@@ -1075,6 +1095,7 @@ button.dwin-text:hover { background: color-mix(in srgb, var(--fg) 7%, transparen
   function renderBoard() {
     renderTop();
     if (S.page === "daily") { renderDailyBoard(); return; }
+    if (S.page === "cork") { renderCorkBoard(); return; }
     if (S.drag) { S.pendingRender = true; return; }
     const board = $("#board");
     board.dataset.layout = S.prefs.layout;
@@ -1272,6 +1293,230 @@ button.dwin-text:hover { background: color-mix(in srgb, var(--fg) 7%, transparen
     if (S.page === "daily") renderBoard();
   }, 20000);
 
+  /* ---------- the cork page: a shared board, everyone can pin notes under any of the four topics ---------- */
+  const corkMine = () => S.cork.notes.filter((n) => n.authorId === S.myId);
+  const corkPlaced = (n) => typeof n.x === "number" && typeof n.y === "number" && !!n.topic;
+  function corkQuadEls() { return [...document.querySelectorAll('#board .quad[data-topic] .face.front .cork')]; }
+  function corkElFor(topic) { return document.querySelector(`#board .quad[data-topic="${CSS.escape(topic)}"] .face.front .cork`); }
+  function corkAt(ev) { return corkQuadEls().find((el) => overEl(el, ev)) || null; }
+  function corkTopZ() { return S.cork.notes.reduce((z, n) => Math.max(z, n.z || 0), 0) + 1; }
+  let corkTimers = {}, corkChain = Promise.resolve();
+  // Each cork note is its own document (not an array field), so several people can add and place notes at once without clobbering each other.
+  function saveCorkNote(id, mut, opts = {}) {
+    const n = S.cork.notes.find((x) => x.id === id);
+    if (!n) return;
+    mut(n);
+    n.updatedAt = Date.now();
+    renderBoard();
+    if (opts.panel) renderPanel();
+    clearTimeout(corkTimers[id]);
+    corkTimers[id] = setTimeout(() => {
+      const snapshot = clone(n);
+      corkChain = corkChain.then(() => S.db.collection("cork").doc(id).set(snapshot)).catch(writeErr);
+    }, opts.delay ?? 300);
+  }
+  function addCorkNote() {
+    if (corkMine().length >= MAX_CORK_NOTES) { toast(`You can have up to ${MAX_CORK_NOTES} cork notes. Remove one to add another.`); return; }
+    const now = Date.now();
+    const n = { id: rid(), authorId: S.myId, rot: +(Math.random() * 6 - 3).toFixed(1), color: S.prefs.paper, text: "", createdAt: now, updatedAt: now };
+    S.cork.notes.push(n);
+    renderPanel();
+    SFX.peel();
+    focusCard(n.id);
+    const snapshot = clone(n);
+    corkChain = corkChain.then(() => S.db.collection("cork").doc(n.id).set(snapshot)).catch(writeErr);
+  }
+  function removeCorkNote(id) {
+    const i = S.cork.notes.findIndex((x) => x.id === id);
+    if (i < 0) return;
+    S.cork.notes.splice(i, 1);
+    renderBoard(); renderPanel();
+    SFX.trash();
+    corkChain = corkChain.then(() => S.db.collection("cork").doc(id).delete()).catch(writeErr);
+  }
+  function pinCorkNote(id, topic, x, y) {
+    const el = corkElFor(topic), r = el && el.getBoundingClientRect();
+    const w = noteWPct(r), h = noteHPct(r);
+    const z = corkTopZ();
+    saveCorkNote(id, (n) => { n.topic = topic; n.x = +clamp(x, 0, 100 - w).toFixed(2); n.y = +clamp(y, 0, Math.max(0, 100 - h)).toFixed(2); n.z = z; }, { panel: true });
+    SFX.pin();
+  }
+  function unpinCorkNote(id) {
+    saveCorkNote(id, (n) => { delete n.topic; delete n.x; delete n.y; delete n.z; }, { panel: true });
+    SFX.unpin();
+    focusCard(id);
+  }
+  function makeCorkFromList() {
+    const items = parseList(S.listDraft || "");
+    if (!items.length) return;
+    const room = MAX_CORK_NOTES - corkMine().length;
+    if (room <= 0) { toast(`You can have up to ${MAX_CORK_NOTES} cork notes. Remove one to add another.`); return; }
+    const now = Date.now();
+    const made = items.slice(0, room).map((text) => ({ id: rid(), authorId: S.myId, rot: +(Math.random() * 6 - 3).toFixed(1), color: S.prefs.paper, text: text.slice(0, 400), createdAt: now, updatedAt: now }));
+    S.listOpen = false; S.listDraft = "";
+    S.cork.notes.push(...made);
+    renderPanel();
+    SFX.pops(made.length);
+    if (items.length > room) toast(`Made ${room} notes. You can have up to ${MAX_CORK_NOTES}.`);
+    const batch = made.map(clone);
+    corkChain = corkChain.then(() => Promise.all(batch.map((n) => S.db.collection("cork").doc(n.id).set(n)))).catch(writeErr);
+  }
+  function unpinAllCork() {
+    const mine = corkMine().filter(corkPlaced);
+    if (!mine.length) return;
+    mine.forEach((n) => { delete n.topic; delete n.x; delete n.y; delete n.z; n.updatedAt = Date.now(); });
+    renderBoard(); renderPanel();
+    SFX.unpin();
+    const batch = mine.map(clone);
+    corkChain = corkChain.then(() => Promise.all(batch.map((n) => S.db.collection("cork").doc(n.id).set(n)))).catch(writeErr);
+  }
+  function cNoteHTML(n) {
+    const paper = PAPERS[n.color] || PAPERS.yellow;
+    const style = `left:min(${n.x}%, 100% - var(--nw));top:${n.y}%;z-index:${n.z || 1};--rot:${n.rot || 0}deg;--paper:${paper}`;
+    const mine = n.authorId === S.myId;
+    const m = S.members.find((x) => x.id === n.authorId);
+    const av = `<span class="note-av">${badge(m ? m.seat : "")}</span>`;
+    const body = `${av}${esc(n.text || "")}`;
+    if (mine) return `<button type="button" class="note cnote mine" data-note="${esc(n.id)}" style="${style}" aria-label="Your note: ${esc(n.text || "empty")}. Drag to move it, or to the desk to take it back.">${body}</button>`;
+    return `<div class="note cnote" style="${style}">${body}</div>`;
+  }
+  function corkQuadHTML(topic) {
+    const name = CORK_TOPIC_NAME[topic];
+    const notes = S.cork.notes.filter((n) => n.topic === topic && corkPlaced(n));
+    return `<section class="quad" data-topic="${topic}">
+      <div class="flipper"><div class="face front">
+        <div class="q-head"><span class="name-tag topic-tag"><span class="name">${esc(name)}</span></span></div>
+        <div class="cork" role="group" aria-label="${esc(name)} notes">${notes.map(cNoteHTML).join("")}</div>
+      </div></div>
+    </section>`;
+  }
+  function renderCorkBoard() {
+    const board = $("#board");
+    board.dataset.layout = "grid";
+    if (!S.ready || !S.db) {
+      board.innerHTML = CORK_TOPIC_KEYS.map((t) => `<section class="quad"><div class="flipper"><div class="face front"><div class="q-head"><span class="name-tag topic-tag"><span class="name">${esc(CORK_TOPIC_NAME[t])}</span></span></div>${corkHTML([], { hint: S.ready ? "<span>Open this page on claude.ai, signed in, to see the board</span>" : "<span>Loading…</span>" })}</div></div></section>`).join("");
+      return;
+    }
+    keepFocus(() => { board.innerHTML = CORK_TOPIC_KEYS.map(corkQuadHTML).join(""); });
+    queueFit();
+  }
+  function renderCorkPanel(P) {
+    const all = corkMine();
+    const notes = all.filter((n) => !corkPlaced(n));
+    P.className = "panel cork";
+    keepFocus(() => {
+      P.innerHTML = `<div class="desk-col">
+          <div class="desk-col-head"><span class="lbl">My notes</span>
+            <button class="btn small primary" type="button" data-act="add-note">${IC.plus} New note</button>
+            <button class="btn small" type="button" data-act="list-open" aria-expanded="${!!S.listOpen}">From a list</button>
+            ${all.length > notes.length ? `<button class="btn small" type="button" data-act="unpin-all">Take all back</button>` : ""}</div>
+          ${S.listOpen ? `<div class="list-box">
+            <label class="lbl" for="in-list">One note per line</label>
+            <textarea id="in-list" class="field" rows="4">${esc(S.listDraft || "")}</textarea>
+            <div class="list-actions"><button class="btn small primary" type="button" data-act="list-make" id="list-make">${listLabel(S.listDraft || "")}</button>
+              <button class="btn small" type="button" data-act="list-cancel">Cancel</button></div>
+          </div>` : `<div class="note-row" id="note-row">${notes.map(cardHTML).join("") || `<div class="empty"></div>`}</div>`}
+        </div>`;
+    });
+    queueFit();
+  }
+  /* Dragging a cork note: from the desk onto any of the four topics, or between topics / back to the desk on the board. */
+  document.addEventListener("pointerdown", (ev) => {
+    if (S.page !== "cork" || ev.button > 0) return;
+    const grip = ev.target.closest("[data-grip]");
+    if (grip && !ev.target.closest("button")) {
+      const id = grip.dataset.grip;
+      const n = S.cork.notes.find((v) => v.id === id && v.authorId === S.myId);
+      if (!n) return;
+      ev.preventDefault();
+      const card = grip.closest(".card");
+      const anyCork = corkQuadEls()[0];
+      const cr = anyCork && anyCork.getBoundingClientRect();
+      const gw = cr && cr.width ? cr.width * noteWPct(cr) / 100 : 100;
+      const ghost = document.createElement("div");
+      ghost.className = "note-ghost";
+      ghost.style.setProperty("--paper", PAPERS[n.color] || PAPERS.yellow);
+      ghost.style.width = gw + "px";
+      ghost.textContent = card.querySelector("textarea").value || " ";
+      ghost.style.left = ev.clientX - gw / 2 + "px";
+      ghost.style.top = ev.clientY - 12 + "px";
+      document.body.appendChild(ghost);
+      fitText(ghost, gw * .3 * noteScale());
+      card.classList.add("lifted");
+      document.body.classList.add("carrying");
+      SFX.thwip();
+      S.corkDrag = { id, ghost, card, gw, origin: "desk", overTopic: null, moved: true };
+      try { grip.setPointerCapture(ev.pointerId); } catch (_) {}
+      return;
+    }
+    const el = ev.target.closest(".cnote.mine");
+    if (el) {
+      const id = el.dataset.note;
+      const n = S.cork.notes.find((v) => v.id === id && v.authorId === S.myId);
+      if (!n) return;
+      S.corkDrag = { id, el, note: n, origin: "board", sx: ev.clientX, sy: ev.clientY, moved: false, overTopic: null };
+      try { el.setPointerCapture(ev.pointerId); } catch (_) {}
+    }
+  });
+  document.addEventListener("pointermove", (ev) => {
+    const d = S.corkDrag;
+    if (!d) return;
+    if (d.origin === "board" && !d.moved) {
+      if (Math.hypot(ev.clientX - d.sx, ev.clientY - d.sy) < 5) return;
+      d.moved = true;
+      const r = d.el.getBoundingClientRect();
+      d.gw = r.width;
+      const ghost = document.createElement("div");
+      ghost.className = "note-ghost";
+      ghost.style.setProperty("--paper", PAPERS[d.note.color] || PAPERS.yellow);
+      ghost.style.width = r.width + "px";
+      ghost.textContent = d.note.text || " ";
+      document.body.appendChild(ghost);
+      fitText(ghost, r.width * .3 * noteScale());
+      d.ghost = ghost;
+      d.el.style.visibility = "hidden";
+      document.body.classList.add("carrying");
+      SFX.thwip();
+    }
+    if (!d.ghost) return;
+    d.ghost.style.left = ev.clientX - d.gw / 2 + "px";
+    d.ghost.style.top = ev.clientY - 12 + "px";
+    const hit = corkAt(ev);
+    const hitTopic = hit && hit.closest(".quad").dataset.topic;
+    if (hitTopic !== d.overTopic) {
+      corkQuadEls().forEach((qEl) => qEl.classList.toggle("drop-target", qEl.closest(".quad").dataset.topic === hitTopic));
+      d.overTopic = hitTopic || null;
+    }
+    d.overTrash = overEl($("#trash"), ev);
+    $("#trash").classList.toggle("hot", d.overTrash);
+    d.ghost.classList.toggle("into-trash", d.overTrash);
+    d.overDesk = !d.overTrash && !d.overTopic && S.deskOpen && overEl($("#panel"), ev);
+    $("#panel").classList.toggle("drop-target", !!d.overDesk);
+  });
+  function endCorkDrag(ev, cancelled) {
+    const d = S.corkDrag;
+    if (!d) return;
+    S.corkDrag = null;
+    document.body.classList.remove("carrying");
+    $("#trash").classList.remove("hot");
+    $("#panel").classList.remove("drop-target");
+    corkQuadEls().forEach((el) => el.classList.remove("drop-target"));
+    if (d.card) d.card.classList.remove("lifted");
+    if (d.ghost) d.ghost.remove();
+    if (!d.moved) return;
+    if (!cancelled && d.overTopic) {
+      const el = corkElFor(d.overTopic), r = el.getBoundingClientRect();
+      const x = ((ev.clientX - r.left) / r.width) * 100 - noteWPct(r) / 2, y = ((ev.clientY - r.top) / r.height) * 100 - 2;
+      pinCorkNote(d.id, d.overTopic, x, y);
+      return;
+    }
+    if (!cancelled && d.overTrash) { removeCorkNote(d.id); return; }
+    if (!cancelled && d.origin === "board" && d.overDesk) { unpinCorkNote(d.id); return; }
+    if (d.origin === "board") { if (d.el) d.el.style.visibility = ""; renderBoard(); }
+  }
+  document.addEventListener("pointerup", (ev) => endCorkDrag(ev, false));
+  document.addEventListener("pointercancel", (ev) => endCorkDrag(ev, true));
+
   /* ---------- my desk ---------- */
   const panelBusy = () => { const a = document.activeElement; return !!(a && $("#panel").contains(a) && (a.tagName === "TEXTAREA" || a.tagName === "INPUT")); };
   function cardHTML(n) {
@@ -1301,6 +1546,7 @@ button.dwin-text:hover { background: color-mix(in srgb, var(--fg) 7%, transparen
       return;
     }
     if (S.page === "daily") { renderDailyPanel(P); return; }
+    if (S.page === "cork") { renderCorkPanel(P); return; }
     const today = myTodayDoc();
     const all = notesOf(today);
     const notes = all.filter((n) => !placed(n));
@@ -2276,10 +2522,11 @@ button.dwin-text:hover { background: color-mix(in srgb, var(--fg) 7%, transparen
       case "open-settings": S.settingsOpen = true; openScrim($("#settingsScrim")); renderSettings(); break;
       case "close": closeSheets(); break;
       case "page": {
-        const p = b.dataset.page === "daily" ? "daily" : "board";
+        const p = PAGE_ORDER.includes(b.dataset.page) ? b.dataset.page : "board";
         if (p !== S.page) {
+          const dir = PAGE_ORDER.indexOf(p) > PAGE_ORDER.indexOf(S.page) ? "page-anim-right" : "page-anim-left";
           S.page = p; LS.set("daybook.page", p); renderAll();
-          playAnim($("#board"), p === "daily" ? "page-anim-right" : "page-anim-left");
+          playAnim($("#board"), dir);
           playAnim($("#panel"), "page-fade");
         }
         break;
@@ -2327,7 +2574,7 @@ button.dwin-text:hover { background: color-mix(in srgb, var(--fg) 7%, transparen
       }
       case "canary-poke": canaryReact(); break;
       case "join": join(b.dataset.seat); break;
-      case "add-note": addNote(); break;
+      case "add-note": if (S.page === "cork") addCorkNote(); else addNote(); break;
       case "desk-toggle": if (S.deskOpen) { S.deskOpen = false; applyDesk(); SFX.whoosh(false); break; }
       // falls through to open
       case "desk-open": S.deskOpen = true; applyDesk(); SFX.whoosh(true); setTimeout(() => $("#in-update")?.focus({ preventScroll: true }), 450); break;
@@ -2337,10 +2584,10 @@ button.dwin-text:hover { background: color-mix(in srgb, var(--fg) 7%, transparen
       case "hist-who": S.history.who = b.dataset.seat || null; S.history.selDate = null; SFX.tick(); renderHistory(); break;
       case "board-zoom": openBoardZoom(b.dataset.date); break;
       case "zoom-close": closeBoardZoom(); break;
-      case "unpin-all": unpinAll(); break;
+      case "unpin-all": if (S.page === "cork") unpinAllCork(); else unpinAll(); break;
       case "list-open": S.listOpen = !S.listOpen; renderPanel(); if (S.listOpen) $("#in-list")?.focus(); break;
       case "list-cancel": S.listOpen = false; S.listDraft = ""; renderPanel(); break;
-      case "list-make": makeFromList(); break;
+      case "list-make": if (S.page === "cork") makeCorkFromList(); else makeFromList(); break;
       case "av-pick": { const c = S.avBatch && S.avBatch[+b.dataset.i]; if (c) { setAvatar({ ...c }); SFX.boop(); } break; }
       case "av-batch": newBatch(); renderSettings(); break;
       case "quick": {
@@ -2354,13 +2601,14 @@ button.dwin-text:hover { background: color-mix(in srgb, var(--fg) 7%, transparen
       case "upd-submit": { const ta = $("#in-update"); const v = ta ? ta.value : ""; if (v.trim()) { clearUpdDraft(); postUpdate(v); } $("#in-update")?.focus(); break; }
       case "card-color": {
         const id = b.dataset.id, color = b.dataset.color;
-        saveDay((d) => { const n = d.notes.find((x) => x.id === id); if (n) n.color = color; });
+        if (S.page === "cork") saveCorkNote(id, (n) => { n.color = color; });
+        else saveDay((d) => { const n = d.notes.find((x) => x.id === id); if (n) n.color = color; });
         const card = b.closest(".card");
         card.style.setProperty("--paper", PAPERS[color]);
         card.querySelectorAll(".dot").forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
         break;
       }
-      case "card-delete": removeNote(b.dataset.id); break;
+      case "card-delete": if (S.page === "cork") removeCorkNote(b.dataset.id); else removeNote(b.dataset.id); break;
       case "drawer-pick": {
         const items = S.history.items || [];
         let i = +b.dataset.idx;
@@ -2395,7 +2643,8 @@ button.dwin-text:hover { background: color-mix(in srgb, var(--fg) 7%, transparen
     if (t.dataset.cardText) {
       fitCard(t);
       const id = t.dataset.cardText, v = t.value;
-      saveDay((d) => { const n = d.notes.find((x) => x.id === id); if (n) n.text = v; }, { delay: 700 });
+      if (S.page === "cork") saveCorkNote(id, (n) => { n.text = v; }, { delay: 700 });
+      else saveDay((d) => { const n = d.notes.find((x) => x.id === id); if (n) n.text = v; }, { delay: 700 });
     } else if (t.dataset.posted !== undefined) {
       const i = +t.dataset.posted, v = t.value;
       if (v.trim()) setPosted((L) => { L[i] = v; }, { delay: 700 });
@@ -2511,6 +2760,10 @@ button.dwin-text:hover { background: color-mix(in srgb, var(--fg) 7%, transparen
       showNotice("Lost the connection to the board. Reload the page to reconnect.");
       renderAll();
     });
+    db.collection("cork").onSnapshot(
+      (snap) => { S.cork.notes = snap.docs.map((d) => d.data()); S.cork.ready = true; if (S.page === "cork") renderAll(); },
+      () => { S.cork.notes = []; S.cork.ready = true; if (S.page === "cork") renderAll(); }
+    );
   }
   boot();
 })();
