@@ -1,0 +1,2144 @@
+<title>Team Daybook</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Atkinson+Hyperlegible:wght@400;700&family=Patrick+Hand&display=swap">
+<style>
+/* Layout: date bar; one shared cork board split into four areas (top ~3/4); my desk for writing notes and the day's update (bottom ~1/4). Light green wall behind. */
+:root {
+  --bg: #e2f0d9;
+  --surface: #f6fbf3;
+  --surface-2: #d2e6c6;
+  --line: #bcd4ae;
+  --fg: #1b231b;
+  --muted: #536453;
+  --faint: #839583;
+  --acc-light: #2d6a6f;
+  --acc-dark: #7cc4c4;
+  --accent: var(--acc-light);
+  --on-accent: #ffffff;
+  --soft: #3f5a77;
+  --soft-bg: #e1e8f1;
+  --warn: #8f5a0e;
+  --warn-bg: #f5e8d2;
+  --danger: #a3322a;
+
+  --cork: #c9a274;
+  --cork-dot-a: rgba(120, 80, 40, .11);
+  --cork-dot-b: rgba(255, 240, 210, .12);
+  --cork-edge: rgba(70, 45, 20, .35);
+  --cork-line: rgba(70, 42, 16, .30);
+  --tag-bg: rgba(255, 255, 255, .92);
+  --paper-ink: #2b2618;
+  --pin: #d2463c;
+  --manila: #e7cf96;
+  --manila-ink: #5b4518;
+  --back: #ece3d2;
+  --back-ink: #2e2a20;
+  --back-line: rgba(80, 60, 30, .16);
+  --hole: rgba(28, 16, 6, .7);
+
+  --f-display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --f-body: "Atkinson Hyperlegible", "Segoe UI", system-ui, sans-serif;
+  --f-note: "Patrick Hand", "Segoe Print", "Comic Sans MS", cursive;
+
+  --fs: 15px;
+  --note-scale: 1;
+  --radius: 12px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #15211a; --surface: #1c2a21; --surface-2: #24362a; --line: #304636;
+    --fg: #e3ece4; --muted: #a2b4a5; --faint: #6e8273;
+    --accent: var(--acc-dark); --on-accent: #0d1512;
+    --soft: #a9c3e4; --soft-bg: #1c2938; --warn: #e6b765; --warn-bg: #33270f; --danger: #f08c80;
+    --cork: #7a5a3a; --cork-dot-a: rgba(30, 18, 8, .2); --cork-dot-b: rgba(255, 220, 170, .05); --cork-edge: rgba(0, 0, 0, .5);
+    --cork-line: rgba(0, 0, 0, .45); --tag-bg: rgba(24, 34, 27, .92);
+    --back: #2a2922; --back-ink: #e9e3d5; --back-line: rgba(255, 240, 210, .12); --hole: rgba(0, 0, 0, .75);
+    --manila: #6b5a33; --manila-ink: #f3e6c4;
+    --map-ca: #2a3d2f; --wood: #4d6e53;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #15211a; --surface: #1c2a21; --surface-2: #24362a; --line: #304636;
+  --fg: #e3ece4; --muted: #a2b4a5; --faint: #6e8273;
+  --accent: var(--acc-dark); --on-accent: #0d1512;
+  --soft: #a9c3e4; --soft-bg: #1c2938; --warn: #e6b765; --warn-bg: #33270f; --danger: #f08c80;
+  --cork: #7a5a3a; --cork-dot-a: rgba(30, 18, 8, .2); --cork-dot-b: rgba(255, 220, 170, .05); --cork-edge: rgba(0, 0, 0, .5);
+  --cork-line: rgba(0, 0, 0, .45); --tag-bg: rgba(24, 34, 27, .92);
+  --back: #2a2922; --back-ink: #e9e3d5; --back-line: rgba(255, 240, 210, .12); --hole: rgba(0, 0, 0, .75);
+  --manila: #6b5a33; --manila-ink: #f3e6c4;
+  --map-ca: #2a3d2f; --wood: #4d6e53;
+  color-scheme: dark;
+}
+
+[hidden] { display: none !important; }
+html, body { height: 100%; }
+body { background: var(--bg); color: var(--fg); font-family: var(--f-body); font-size: var(--fs); line-height: 1.5; }
+body[data-size="s"] { --note-scale: .88; }
+body[data-size="l"] { --note-scale: 1.15; }
+button, input, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.muted { color: var(--muted); }
+.lbl { font-size: .74em; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.hint { color: var(--faint); font-size: .82em; }
+
+:root { --rail-w: 54px; }
+.upper { display: flex; gap: 12px; min-height: 0; }
+.upper-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 12px; }
+.rail {
+  position: relative; flex: none; width: var(--rail-w); box-sizing: border-box; padding: 4px 0 0 8px;
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+}
+.rail::before { content: ""; position: absolute; left: 0; top: 4px; bottom: 4px; width: 1px; background: var(--line); }
+.rail-line { display: none; }
+/* Three groups: Add at the top, History and My view in the middle, the trash at the bottom. */
+.rail { display: grid !important; grid-template-rows: 1fr auto 1fr; justify-items: center; }
+.rail-group { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.rail-group.top { align-self: start; }
+.rail-group.bottom { align-self: end; }
+.rail-btn[aria-pressed="true"] { color: var(--fg); background: var(--surface-2); }
+.rail-btn { width: 46px; border: 0; background: transparent; border-radius: 10px; padding: 7px 2px 5px; display: flex; flex-direction: column; align-items: center; gap: 3px; color: var(--muted); font-size: .66em; font-weight: 700; line-height: 1.1; }
+.rail-btn svg { width: 20px; height: 20px; }
+.rail-btn span { white-space: nowrap; font-size: .94em; }
+.rail-btn:hover { color: var(--fg); background: var(--surface-2); }
+.trash { width: 44px; height: 44px; border-radius: 12px; display: grid; place-items: center; color: var(--faint); transition: background .2s, color .2s, transform .2s; }
+.trash svg { width: 24px; height: 24px; overflow: visible; }
+.trash .lid { transform-box: fill-box; transform-origin: 100% 100%; transition: transform .2s; }
+body.carrying .trash { color: var(--danger); background: color-mix(in srgb, var(--danger) 10%, transparent); }
+.trash.hot { transform: scale(1.12); background: color-mix(in srgb, var(--danger) 20%, transparent) !important; }
+.note-ghost { transition: transform .15s, opacity .15s; }
+.note-ghost.into-trash { transform: rotate(-8deg) scale(.32); opacity: .75; transform-origin: 50% 12px; }
+.trash.hot .lid { transform: rotate(-24deg) translate(-1px, -2px); }
+@media (max-width: 560px) { :root { --rail-w: 46px; } .rail-btn { width: 44px; } .rail-btn span { display: none; } .trash { width: 44px; height: 44px; } }
+.app { display: flex; flex-direction: column; gap: 12px; min-height: 100%; box-sizing: border-box; padding-inline: 16px; padding-block: 0 16px; max-width: 1600px; margin: 0 auto; }
+
+/* Top bar */
+.top { position: relative; display: flex; align-items: center; padding-block: 12px 0; min-height: 52px; }
+.brand { position: relative; z-index: 2; }
+/* The page background is a map of Canada, stretched so the four cities' windows sit in the space below the board
+   (measured with the desk closed); it stays put when the desk opens. */
+:root:not([data-theme="dark"]) { --map-ca: #bcd6ab; --wood: #7fa56b; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --map-ca: #2a3d2f; --wood: #4d6e53; } }
+.page-map { position: fixed; inset: 0; z-index: 0; pointer-events: none; }
+.page-map svg { width: 100%; height: 100%; display: block; }
+.map-ca { fill: var(--map-ca); }
+.map-lake { fill: var(--bg); }
+.page-cities { position: fixed; inset: 0; z-index: 0; pointer-events: none; }
+body:not(.show-map) .page-map, body:not(.show-map) .page-cities { display: none; }
+.app { position: relative; z-index: 1; }
+/* Each city gets a little framed window with a cross bar, like peering into their world. */
+/* Storybook cottage windows: an arched top, a flat frame and cross bars, in the map's greens. */
+.window { position: absolute; width: 30px; height: 36px; transform: translate(-50%, -50%); box-sizing: border-box; padding: 3.5px 3.5px 4px;
+  border-radius: 50% 50% 4px 4px / 36% 36% 4px 4px; background: var(--wood); }
+.window .sky { width: 100%; height: 100%; border-radius: 50% 50% 2px 2px / 32% 32% 2px 2px; box-shadow: none; }
+.window::before, .window::after { content: ""; position: absolute; z-index: 2; background: var(--wood); }
+.window::before { left: calc(50% - 1.5px); top: 4px; bottom: 4px; width: 3px; }
+.window::after { top: calc(56% - 1.5px); left: 3.5px; right: 3.5px; height: 3px; }
+@media (max-width: 720px) {
+  .window { width: 22px; height: 27px; padding: 2.5px 2.5px 3px; }
+  .window::before { left: calc(50% - 1px); width: 2px; top: 3px; bottom: 3px; }
+  .window::after { top: calc(56% - 1px); height: 2px; left: 2.5px; right: 2.5px; }
+}
+/* Sky windows: each city's real time of day and moon, worked out from the sun's position. */
+.sky { position: relative; flex: none; display: block; width: 168px; height: 40px; border-radius: 20px; overflow: hidden; background: var(--sky, #9ccbef);
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, .25), 0 0 0 3px var(--surface); transition: background 2s; }
+.sky .orb { position: absolute; width: 12px; height: 12px; margin: -6px 0 0 -6px; border-radius: 50%; }
+.sky .sun { background: radial-gradient(circle at 40% 40%, #fff7c2, color-mix(in srgb, #ffd45e, #ff8a3d calc(var(--warm, 0) * 100%)) 60%, #f6a93b); box-shadow: 0 0 12px 4px rgba(255, 190, 94, .55); }
+.sky .moon svg { width: 12px; height: 12px; display: block; filter: drop-shadow(0 0 4px rgba(255, 255, 230, .5)); }
+.sky .star { position: absolute; width: 2px; height: 2px; border-radius: 50%; background: #fff; opacity: .8; }
+.sky .cloud { position: absolute; height: 10px; border-radius: 10px; background: rgba(255, 255, 255, .75); filter: blur(1.5px); }
+.sky .hill { position: absolute; left: -10%; right: -10%; bottom: -11px; height: 18px; border-radius: 50%; background: var(--hill, #a6c895); }
+@media (prefers-reduced-motion: no-preference) {
+  .sky .cloud { animation: drift var(--drift, 60s) linear infinite; }
+  .sky .star { animation: twinkle 3.5s ease-in-out infinite alternate; }
+  @keyframes drift { from { transform: translateX(-60px); } to { transform: translateX(240px); } }
+  @keyframes twinkle { from { opacity: .25; } to { opacity: .95; } }
+}
+.brand { display: flex; flex-direction: column; min-width: 0; }
+.eyebrow { font-size: .72em; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.brand h1 { margin: 0; font-family: var(--f-display); font-weight: 700; font-size: 1.6em; letter-spacing: -.01em; line-height: 1.15; text-wrap: balance; }
+.actions { display: flex; gap: 8px; }
+.btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  border: 1px solid var(--line); background: var(--surface); border-radius: 8px;
+  padding: 7px 12px; font-size: .92em;
+}
+.btn:hover { border-color: var(--accent); }
+.btn.primary { background: var(--accent); color: var(--on-accent); border-color: var(--accent); font-weight: 700; }
+.btn.small { padding: 4px 10px; font-size: .85em; }
+.btn svg { width: 16px; height: 16px; }
+.notice { padding: 8px 14px; border-radius: 8px; background: var(--soft-bg); color: var(--soft); font-size: .9em; }
+
+/* Shared cork texture */
+.cork, .board, .face.front {
+  background-color: var(--cork);
+  background-image:
+    radial-gradient(circle at 20% 30%, var(--cork-dot-a) 0 1px, transparent 1.6px),
+    radial-gradient(circle at 70% 60%, var(--cork-dot-a) 0 1.2px, transparent 2px),
+    radial-gradient(circle at 40% 80%, var(--cork-dot-b) 0 1px, transparent 1.6px),
+    radial-gradient(circle at 85% 15%, var(--cork-dot-b) 0 .8px, transparent 1.4px);
+  background-size: 13px 13px, 19px 17px, 17px 21px, 11px 12px;
+  box-shadow: inset 0 0 0 1px var(--cork-edge), inset 0 2px 10px rgba(0, 0, 0, .18);
+}
+
+/* The public board: one cork, four areas */
+.board { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); border-radius: var(--radius); overflow: hidden; isolation: isolate; }  /* keep the board's layers below the side panels */
+.board[data-layout="row"] { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.board[data-layout="stack"] { grid-template-columns: minmax(0, 1fr); }
+@media (max-width: 1100px) { .board[data-layout="row"] { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 720px) { .board, .board[data-layout="row"] { grid-template-columns: minmax(0, 1fr); } }
+
+.quad { min-width: 0; }
+.flipper { position: relative; height: 100%; }
+.face { box-sizing: border-box; padding: 12px; display: flex; flex-direction: column; gap: 8px; backface-visibility: hidden; -webkit-backface-visibility: hidden; }
+.face.front { position: relative; height: 100%; padding: 0; box-shadow: inset 0 0 0 1px var(--cork-line), inset 0 2px 8px rgba(0, 0, 0, .14); }
+/* The name row floats over the cork, so notes can sit beside the tag. */
+.face.front > .q-head { position: absolute; top: 12px; left: 12px; right: 12px; z-index: 1100; pointer-events: none; }
+.face.front > .q-head > * { pointer-events: auto; }
+/* On the cork the tag has no card behind it; light text with a soft shadow keeps the name readable. */
+.face.front .name-tag { background: transparent; box-shadow: none; padding-left: 0; color: #fff8ec; text-shadow: 0 1px 2px rgba(0, 0, 0, .55); }
+.face.front .name-tag .you { color: inherit; opacity: .8; }
+.face.front .name-tag .upd-icon { color: #fff8ec; filter: drop-shadow(0 1px 1px rgba(0, 0, 0, .5)); }
+.face.front .name-tag .av { box-shadow: 0 1px 3px rgba(0, 0, 0, .35); }
+.face.front .upd-pop { text-shadow: none; }
+.tasklist { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.task { display: grid; grid-template-columns: 10px minmax(0, 1fr); gap: 10px; align-items: start; padding: 8px 2px; border-bottom: 1px solid var(--back-line); }
+.task:last-child { border-bottom: 0; }
+.task .chip-dot { width: 10px; height: 10px; border-radius: 2px; margin-top: 6px; background: var(--paper); box-shadow: 0 0 0 1px rgba(0, 0, 0, .2); }
+.task .t { overflow-wrap: anywhere; white-space: pre-wrap; }
+.q-head { display: flex; align-items: center; gap: 8px; position: relative; z-index: 5; min-height: 32px; }
+.name-tag {
+  position: relative; display: inline-flex; align-items: center; gap: 8px; min-width: 0;
+  padding: 3px 12px 3px 3px; border-radius: 999px; background: var(--tag-bg); box-shadow: 0 1px 3px rgba(0, 0, 0, .25);
+}
+.name-tag.has-update { cursor: help; }
+.av { width: 26px; height: 26px; border-radius: 50%; flex: none; display: grid; place-items: center; font-family: var(--f-display); font-weight: 700; font-size: .9em; background: var(--surface-2); color: var(--muted); }
+.quad.mine .av { background: var(--accent); color: var(--on-accent); }
+.av.custom, .quad.mine .av.custom { background: var(--av); color: #2b2618; }
+.av.emoji { font-family: "Segoe UI Emoji", "Noto Color Emoji", "Apple Color Emoji", sans-serif; font-weight: 400; line-height: 1; }
+.av-btn { border: 0; background: transparent; padding: 0; border-radius: 50%; display: inline-grid; }
+.av-btn:hover .av { box-shadow: 0 0 0 2px var(--accent); }
+.av-preview { display: flex; align-items: center; gap: 10px; font-weight: 700; }
+.av-preview .av { width: 44px; height: 44px; font-size: 1.35em; }
+.av-th { overflow: hidden; padding: 0; background: transparent; }
+.av-th svg { display: block; width: 100%; height: 100%; }
+.av-big { width: 96px; height: 96px; }
+.pick-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 76px)); gap: 8px; }
+.pick-grid button { padding: 4px; border-radius: 14px; border: 1px solid var(--line); background: var(--surface); display: grid; place-items: center; }
+.pick-grid button[aria-pressed="true"] { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent); }
+.pick-av { width: 100%; height: auto; aspect-ratio: 1; }
+/* Thumbs motion: the body sways or bounces from its base; the eyes blink now and then. */
+.av-th .th-sway { transform-box: view-box; transform-origin: 50% 100%; }
+.av-th .th-eyes { transform-box: fill-box; transform-origin: 50% 50%; }
+@media (prefers-reduced-motion: no-preference) {
+  .av-th.mo-sway .th-sway { animation: th-sway var(--sway, 3.6s) ease-in-out var(--d, 0s) infinite alternate; }
+  .av-th.mo-bounce .th-sway { animation: th-bounce var(--bounce, 1.8s) cubic-bezier(.3, .6, .4, 1) var(--d, 0s) infinite; }
+  .av-th:not(.mo-still) .th-eyes { animation: th-blink var(--blink, 4.8s) linear var(--d, 0s) infinite; }
+  .name-tag:hover .av-th .th-sway, .av-btn:hover .av-th .th-sway { animation: th-hop .6s cubic-bezier(.3, .6, .4, 1) 1; }
+  @keyframes th-sway { from { transform: rotate(-6deg); } to { transform: rotate(6deg); } }
+  @keyframes th-bounce { 0%, 100% { transform: translateY(0) scale(1, 1); } 15% { transform: translateY(0) scale(1.06, .94); } 45% { transform: translateY(-9%) scale(.97, 1.04); } 75% { transform: translateY(0) scale(1.03, .97); } }
+  @keyframes th-blink { 0%, 90%, 96%, 100% { transform: scaleY(1); } 93% { transform: scaleY(.1); } }
+  @keyframes th-hop { 0% { transform: translateY(0); } 40% { transform: translateY(-14%) rotate(-8deg); } 70% { transform: translateY(0) rotate(4deg); } 100% { transform: translateY(0); } }
+}
+.name-tag .av { width: 30px; height: 30px; }
+.av-builder { display: flex; flex-direction: column; gap: 10px; }
+.av-top { display: flex; align-items: center; gap: 14px; }
+.av-top .av { flex: none; }
+.av-top .who { display: flex; flex-direction: column; gap: 6px; align-items: flex-start; }
+.av-tabs { display: flex; gap: 4px; background: var(--surface-2); padding: 4px; border-radius: 9px; width: fit-content; max-width: 100%; flex-wrap: wrap; }
+.av-tabs button { border: 0; background: transparent; border-radius: 6px; padding: 5px 12px; font-size: .9em; color: var(--muted); }
+.av-tabs button[aria-pressed="true"] { background: var(--surface); color: var(--fg); font-weight: 700; box-shadow: 0 1px 3px rgba(0, 0, 0, .15); }
+.av-sub { font-size: .78em; font-weight: 700; color: var(--muted); margin-top: 2px; }
+.tiles button { width: 52px; height: 52px; padding: 2px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface); display: grid; place-items: center; font-size: .72em; color: var(--muted); }
+.tiles button[aria-pressed="true"] { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent); }
+.swatch.sm { width: 26px; height: 26px; }
+.av-grid { display: grid; grid-template-columns: repeat(auto-fill, 38px); gap: 6px; }
+.av-grid button { width: 38px; height: 38px; border-radius: 8px; border: 1px solid var(--line); background: var(--surface); font-size: 19px; padding: 0; font-family: "Segoe UI Emoji", "Noto Color Emoji", "Apple Color Emoji", var(--f-body); }
+.av-grid button[aria-pressed="true"] { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 16%, var(--surface)); }
+.name { font-weight: 700; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.name .you { font-weight: 400; color: var(--faint); font-size: .85em; margin-left: 4px; }
+.upd-icon { width: 15px; height: 15px; color: var(--accent); flex: none; }
+.upd-pop {
+  display: none; position: absolute; top: calc(100% + 8px); left: 0; width: max-content; max-width: min(340px, 72vw);
+  background: var(--surface); color: var(--fg); border-radius: 10px; padding: 12px 14px; cursor: auto;
+  box-shadow: 0 10px 30px -10px rgba(0, 0, 0, .45), 0 0 0 1px var(--line);
+}
+/* Speech-bubble tail pointing up at the avatar. */
+.upd-pop::before { content: ""; position: absolute; top: -6px; left: 9px; width: 11px; height: 11px; background: var(--surface); transform: rotate(45deg); box-shadow: -1px -1px 0 0 var(--line); border-radius: 2px 0 0 0; }
+.upd-pop p { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+.name-tag:hover .upd-pop, .name-tag:focus .upd-pop, .name-tag:focus-within .upd-pop, .name-tag.peek .upd-pop { display: block; }
+.name-tag.peek .upd-pop { animation: bubble-in .22s cubic-bezier(.3, 1.4, .5, 1); }
+@keyframes bubble-in { from { opacity: 0; transform: translateY(-4px) scale(.94); } }
+.pill { flex: none; font-size: .72em; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; padding: 3px 8px; border-radius: 999px; background: var(--tag-bg); color: var(--muted); }
+.pill.soft { background: var(--soft-bg); color: var(--soft); }
+.pill.warn { background: var(--warn-bg); color: var(--warn); }
+
+.cork { position: relative; aspect-ratio: 4 / 3; width: 100%; border-radius: var(--radius); overflow: hidden; container-type: size; }
+.board .cork { background: none; box-shadow: none; border-radius: 0; overflow: visible; }
+.cork-hint {
+  position: absolute; inset: 0; display: flex; flex-direction: column; gap: 10px; align-items: center; justify-content: center;
+  text-align: center; padding: 16px; pointer-events: none; color: #fff8ec; text-shadow: 0 1px 2px rgba(0, 0, 0, .45); font-size: .95em;
+}
+
+/* Sticky notes on the board */
+.note {
+  --nw: min(calc(54px + 13cqh), 20cqw);   /* square; grows gently with the area's height, never wider than 20% (matches noteSide) */
+  position: absolute; width: var(--nw); aspect-ratio: 1 / 1; box-sizing: border-box;
+  padding: max(calc(var(--nw) * .19), 12px) calc(var(--nw) * .094) calc(var(--nw) * .094); border: 0; text-align: left;
+  background: var(--paper, #fff3a3); color: var(--paper-ink);
+  font-family: var(--f-note); font-size: calc(var(--nw) * .1 * var(--note-scale)); line-height: 1.18;
+  box-shadow: 0 1px 1px rgba(0, 0, 0, .15), 0 6px 10px -6px rgba(0, 0, 0, .45);
+  transform: rotate(var(--rot, 0deg)); transform-origin: 50% 0;
+  overflow-wrap: anywhere; white-space: pre-wrap; overflow: hidden;
+}
+.note::before {
+  content: ""; position: absolute; top: 2.2%; left: 50%; width: calc(var(--nw) * .124); height: calc(var(--nw) * .124); min-width: 8px; min-height: 8px; translate: -50% 0; border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, #ffffffaa 0 18%, transparent 22%), var(--pin);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, .5);
+}
+.note.own { cursor: grab; touch-action: none; }
+/* Hearts sit in the note's bottom-right corner: shown when someone has hearted it, or on hover for a teammate's note. */
+.note .heart { position: absolute; right: calc(var(--nw) * .05); bottom: calc(var(--nw) * .04); display: inline-flex; align-items: center; gap: 2px;
+  font: 700 max(11px, calc(var(--nw) * .11)) / 1 var(--f-body, system-ui); color: rgba(60, 40, 20, .35); border-radius: 999px; padding: 2px 3px; opacity: 0; transition: opacity .15s, transform .15s; }
+.note .heart svg { width: max(13px, calc(var(--nw) * .15)); height: max(13px, calc(var(--nw) * .15)); }
+.note .heart.on { background: rgba(224, 69, 106, .16); }
+.note .heart b { font-weight: 700; color: #b8324a; }
+.note .heart.has, .note .heart.on, .note:hover .heart, .note .heart:focus-visible { opacity: 1; }
+.note .heart.has svg, .note .heart.on svg { color: #e0456a; }
+.note .heart[data-act] { cursor: pointer; }
+.note .heart[data-act]:hover { transform: scale(1.15); color: #e0456a; }
+.note .heart.pop { animation: heart-pop .3s cubic-bezier(.3, 1.6, .5, 1); }
+@keyframes heart-pop { 0% { transform: scale(.6); } }
+.note .heart.static { pointer-events: auto; }
+/* Who hearted a note: a small card above the heart, outside the note so it isn't clipped. */
+.heart-who { position: fixed; z-index: 4000; pointer-events: none; display: flex; flex-direction: column; gap: 6px; padding: 8px 12px 8px 8px; border-radius: 10px;
+  background: var(--surface); color: var(--fg); box-shadow: 0 10px 30px -10px rgba(0, 0, 0, .45), 0 0 0 1px var(--line); font-size: .86em; font-weight: 600; animation: bubble-in .18s ease-out; }
+.heart-who > span { display: flex; align-items: center; gap: 8px; white-space: nowrap; }
+.heart-who .av, .heart-who .av-thumb, .heart-who svg { width: 22px; height: 22px; flex: none; }
+.heart-who .hw-heart { color: #e0456a; width: 12px; height: 12px; }
+.note.own:active { cursor: grabbing; }
+.note.dragging { box-shadow: 0 2px 3px rgba(0, 0, 0, .2), 0 16px 22px -10px rgba(0, 0, 0, .55); transform: rotate(var(--rot, 0deg)) scale(1.04); z-index: 999 !important; }
+.note.dim { opacity: .3; }
+.note.flash { outline: 3px solid var(--accent); outline-offset: 2px; }
+.note mark { background: rgba(255, 140, 0, .35); color: inherit; border-radius: 2px; }
+
+/* My desk (bottom) */
+.panel { --row-h: 136px; background: var(--surface); border-radius: var(--radius); padding: 14px; display: grid; grid-template-columns: minmax(220px, 1fr) minmax(0, 2.6fr); gap: 18px; min-height: 0; box-sizing: border-box; }
+/* The desk: closed by default, the board sits centred with an Add to Daybook button below it. */
+.app { position: relative; }
+.desk { position: relative; display: flex; min-height: 0; }
+.desk > .panel { flex: 1; min-width: 0; }
+.desk-close { position: absolute; top: 10px; right: 10px; z-index: 2; width: 32px; height: 32px; border: 0; border-radius: 8px; background: transparent; color: var(--muted); display: grid; place-items: center; }
+.desk-close:hover { background: var(--surface-2); color: var(--fg); }
+.desk-close svg { width: 20px; height: 20px; }
+.panel { padding-right: 48px; }
+.app.desk-closed .desk { display: none; }
+.panel.single { display: flex; flex-direction: column; gap: 10px; justify-content: center; }
+.panel h2 { margin: 0; font-family: var(--f-display); font-weight: 700; font-size: 1.1em; }
+.who-row { display: flex; gap: 8px; flex-wrap: wrap; }
+.desk-col { display: flex; flex-direction: column; gap: 6px; min-width: 0; min-height: 0; }
+.desk-col-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.desk-col-head .grow { flex: 1; }
+.field { width: 100%; box-sizing: border-box; border: 1px solid transparent; background: var(--surface-2); border-radius: 8px; padding: 8px 10px; min-width: 0; }
+.field:focus { border-color: var(--accent); background: var(--surface); outline: none; }
+#in-update { flex: 1; min-height: 70px; resize: none; }
+.quick { display: flex; gap: 6px; flex-wrap: wrap; }
+.quick button { border: 1px solid var(--line); background: var(--surface); border-radius: 999px; padding: 3px 10px; font-size: .82em; color: var(--muted); }
+.quick button:hover { border-color: var(--accent); color: var(--fg); }
+.mini-btn { border: 0; background: transparent; color: var(--muted); border-radius: 6px; padding: 3px 6px; display: inline-flex; align-items: center; gap: 4px; font-size: .8em; font-weight: 700; }
+.mini-btn:hover, .mini-btn[aria-pressed="true"] { color: var(--accent); background: var(--surface-2); }
+.mini-btn svg { width: 14px; height: 14px; }
+.posted { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; max-height: 40%; overflow: auto; flex: none; }
+.posted li { display: flex; gap: 4px; align-items: center; }
+.posted .field { padding: 5px 8px; font-size: .92em; }
+.upd-box { position: relative; flex: 1; display: flex; min-height: 70px; }
+.upd-box #in-update { flex: 1; padding-right: 36px; background: transparent; border-color: var(--line); }
+.upd-box #in-update:focus { border-color: var(--accent); background: transparent; }
+.upd-send { position: absolute; right: 6px; bottom: 6px; width: 26px; height: 26px; padding: 0; border: 0; border-radius: 6px; background: transparent; color: var(--muted); display: grid; place-items: center; }
+.upd-send:hover { color: var(--accent); background: var(--surface-2); }
+.upd-send svg { width: 16px; height: 16px; }
+.note-row { flex: 1; display: flex; gap: 14px; overflow-x: auto; overflow-y: hidden; padding: 6px 2px 8px; height: var(--row-h); flex: none; box-sizing: border-box; align-items: flex-start; }
+.note-row .empty { align-self: center; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; color: var(--faint); }
+.card {
+  flex: 0 0 112px; width: 112px; height: 112px; display: flex; flex-direction: column; gap: 6px; padding: 10px; box-sizing: border-box;
+  background: var(--paper, #fff1a1); color: var(--paper-ink); border-radius: 3px;
+  box-shadow: 0 1px 1px rgba(0, 0, 0, .12), 0 6px 10px -7px rgba(0, 0, 0, .4);
+}
+.card.flash { outline: 3px solid var(--accent); outline-offset: 2px; }
+.card-grip { display: flex; align-items: center; gap: 6px; margin: -4px -4px 0; padding: 3px 4px; border-radius: 3px; cursor: grab; touch-action: none; user-select: none; font-size: .74em; font-weight: 700; letter-spacing: .04em; color: rgba(43, 38, 24, .6); }
+.card-grip:hover { background: rgba(0, 0, 0, .06); }
+.card-grip svg { width: 14px; height: 14px; flex: none; }
+.card-grip .grow { flex: 1; }
+.card.lifted { opacity: .45; }
+.card { position: relative; padding: 8px !important; }
+.card.drop-before::before, .card.drop-after::after { content: ""; position: absolute; top: 4px; bottom: 4px; width: 3px; border-radius: 2px; background: var(--accent); }
+.card.drop-before::before { left: -9px; }
+.card.drop-after::after { right: -9px; }
+.note-ghost {
+  aspect-ratio: 1 / 1; line-height: 1.18 !important;
+  position: fixed; z-index: 3000; pointer-events: none; box-sizing: border-box; padding: 10px 10px 12px;
+  background: var(--paper); color: var(--paper-ink); font-family: var(--f-note); line-height: 1.25; white-space: pre-wrap; overflow: hidden;
+  box-shadow: 0 2px 3px rgba(0, 0, 0, .2), 0 18px 26px -12px rgba(0, 0, 0, .55); transform: rotate(-2deg);
+}
+.panel.drop-target { outline: 3px dashed var(--accent); outline-offset: -6px; }
+.board .cork.drop-target { outline: 3px dashed var(--accent); outline-offset: -8px; }
+.card textarea { flex: 1; min-height: 0; resize: none; border: 0; padding: 0; background: transparent; font-family: var(--f-note); font-size: 1.12em; line-height: 1.18; overflow: hidden; color: var(--paper-ink); outline: none; }
+/* The list box takes exactly the notes row's place, so opening it doesn't move the page. */
+.list-box { flex: none; height: var(--row-h); box-sizing: border-box; padding: 6px 2px 8px; display: flex; flex-direction: column; gap: 6px; }
+.list-box textarea { flex: 1; min-height: 0; resize: none; }
+.list-actions { display: flex; gap: 8px; }
+.card-tools { display: flex; align-items: center; gap: 3px; }
+.card-tools .del-x { margin-left: auto; width: 18px; height: 18px; padding: 0; display: grid; place-items: center; }
+.card-tools .del-x svg { width: 14px; height: 14px; }
+.card-tools .grow { flex: 1; }
+.dot { flex: none; width: 10px; height: 10px; border-radius: 50%; border: 1px solid rgba(0, 0, 0, .25); padding: 0; background: var(--paper); }
+.dot[aria-pressed="true"] { box-shadow: 0 0 0 2px var(--paper-ink); }
+.card-tools .txt { border: 0; background: transparent; color: #8a2a22; font-size: .8em; font-weight: 700; padding: 2px 4px; border-radius: 4px; }
+.card-tools .txt:hover { background: rgba(0, 0, 0, .08); }
+
+/* Desktop: board fills the top three quarters, desk the bottom quarter. */
+@media (min-width: 721px) and (min-height: 560px) {
+  .app { height: 100%; }
+  .upper { flex: 3 1 0; }
+  .stage { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+  .stage .board { flex: 1; min-height: 0; }
+  .stage .board[data-layout="grid"] { grid-template-rows: repeat(2, minmax(0, 1fr)); }
+  .stage .board[data-layout="row"] { grid-auto-rows: minmax(0, 1fr); }
+  .stage .board[data-layout="grid"] .cork, .stage .board[data-layout="row"] .cork { aspect-ratio: auto; flex: 1; min-height: 0; }
+  .stage .board[data-layout="stack"] .quad { min-height: 0; }
+  .stage .board[data-layout="stack"] { overflow: auto; align-content: start; }
+  .desk { flex: 1 1 0; min-height: 210px; z-index: 1; }
+  /* The date sits in the bottom-left corner, under the desk when it's open; the board takes the space it left. */
+  .app { padding-top: 14px; }
+  header.top { position: absolute; left: 16px; bottom: 18px; z-index: 0; min-height: 0; padding: 0; }
+  /* The divider runs nearly the full height of the screen, stopping above the desk when it's open. */
+  .rail::before { display: none; }
+  .rail-line { display: block; position: absolute; z-index: 2; right: calc(16px + var(--rail-w)); width: 1px; top: 14px; bottom: 22px; background: var(--line);
+    transition: bottom .55s cubic-bezier(.3, .7, .2, 1); }
+  .app:not(.desk-closed) .rail-line { bottom: calc(var(--desk-h, 210px) + 16px + 14px); }
+  /* Same sizes either way; when closed the board drops a little from the top and the desk slides out of view. */
+  .app { overflow: clip; }
+  .upper, .desk { transition: transform .55s cubic-bezier(.3, .7, .2, 1), opacity .4s; }
+  .app.desk-closed .desk { display: flex; transform: translateY(calc(100% + 40px)); opacity: 0; pointer-events: none; }
+  .app.desk-closed .upper { transform: translateY(var(--shift, 0px)); }
+}
+@media (prefers-reduced-motion: reduce) { .upper, .desk { transition: none !important; } }
+@media (max-width: 720px) {
+  .panel { grid-template-columns: minmax(0, 1fr); }
+  .note-row { min-height: 0; }
+}
+
+/* Sheets */
+.scrim { position: fixed; inset: 0; background: rgba(8, 14, 10, .45); z-index: 100; display: flex; justify-content: flex-end; }
+.sheet {
+  background: var(--bg); width: min(920px, 100%); height: 100%; overflow: auto; box-sizing: border-box;
+  padding-inline: 20px; padding-block: calc(16px + env(safe-area-inset-top, 0px)) calc(24px + env(safe-area-inset-bottom, 0px));
+  box-shadow: -10px 0 40px -20px rgba(0, 0, 0, .5); display: flex; flex-direction: column; gap: 16px;
+}
+.sheet.narrow { width: min(460px, 100%); }
+.sheet-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.sheet-head h2 { margin: 0; font-family: var(--f-display); font-weight: 700; font-size: 1.35em; }
+.icon-btn { border: 0; background: transparent; color: var(--muted); border-radius: 6px; padding: 4px; display: inline-grid; place-items: center; }
+.icon-btn:hover { color: var(--fg); background: var(--surface-2); }
+.icon-btn svg { width: 18px; height: 18px; }
+.chips { display: flex; gap: 6px; flex-wrap: wrap; }
+.chip { border: 1px solid var(--line); background: var(--surface); border-radius: 999px; padding: 5px 14px; font-size: .9em; }
+.chip[aria-pressed="true"] { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 14%, var(--surface)); font-weight: 700; }
+.chip:disabled { opacity: .45; cursor: default; }
+.search { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.search .field { flex: 1; min-width: 14ch; width: auto; background: var(--surface); }
+.drawer { position: relative; overflow-x: auto; overflow-y: hidden; padding: 40px 12px 18px; margin-inline: -8px; outline: none; border-radius: var(--radius); background: color-mix(in srgb, var(--fg) 6%, transparent); scrollbar-width: thin; }
+.drawer:focus-visible { box-shadow: inset 0 0 0 2px var(--accent); }
+.drawer-track { position: relative; height: 420px; }
+.fitem { position: absolute; top: 0; height: 410px; width: var(--w); box-sizing: border-box; border-radius: 4px 8px 8px 4px; cursor: pointer;
+  transition: left .42s cubic-bezier(.25, .8, .25, 1), transform .42s cubic-bezier(.25, .8, .25, 1), box-shadow .42s;
+  box-shadow: -4px 0 10px -6px rgba(0, 0, 0, .45); transform: translateY(6px); }
+.fcard { background: var(--back); color: var(--back-ink); overflow: hidden; }
+.fcard.before { transform: translateY(6px) rotate(-.6deg); transform-origin: 0 100%; }
+.fcard.sel { transform: translateY(-6px); cursor: default; box-shadow: 0 18px 34px -16px rgba(0, 0, 0, .55), -4px 0 10px -6px rgba(0, 0, 0, .45); }
+.fspine { position: absolute; left: 0; top: 0; width: 44px; padding-top: 14px; display: flex; justify-content: center; writing-mode: vertical-rl; font-family: var(--f-display); font-weight: 700; font-size: .82em; letter-spacing: .02em; white-space: nowrap; }
+.fcard.sel .fspine { opacity: .45; }
+.fbody { position: absolute; left: 44px; right: 0; top: 0; bottom: 0; overflow: auto; padding: 12px 14px 12px 0; opacity: 0; transition: opacity .25s; }
+.fcard.sel .fbody { opacity: 1; transition-delay: .12s; }
+.fbody .day { background: none; padding: 0; }
+.fitem { transition: left .42s cubic-bezier(.25, .8, .25, 1), width .42s cubic-bezier(.25, .8, .25, 1), transform .42s cubic-bezier(.25, .8, .25, 1), box-shadow .42s !important; }
+.fcard.sel .fbody { display: block; }
+.fbody .ftext { min-width: 0; }
+.cork.snap { width: 100%; height: 100%; aspect-ratio: auto; border-radius: 6px; }
+.fcard:not(.sel) .board-thumb { display: none; }
+/* The whole board in an open card: four areas with a thin seam, each with its owner's name. */
+.snap-board { flex: none; display: grid; grid-template-columns: 1fr 1fr; gap: 1px; width: min(100%, calc(320px * var(--snap-ar))); border-radius: 6px; overflow: hidden; background: var(--cork-line); }
+.snap-q { position: relative; aspect-ratio: var(--snap-ar); }
+.snap-q .cork.snap { border-radius: 0; }
+.snap-q .cork.snap .note { --nw: min(26cqh, 17cqw); }
+.snap-name { position: absolute; z-index: 2; top: 3px; left: 7px; font-size: .7em; font-weight: 700; color: #fff; text-shadow: 0 1px 2px rgba(0, 0, 0, .55); pointer-events: none; }
+/* The small board in a card's top-right corner; it opens large. */
+.board-thumb { float: right; width: 168px; margin: 0 0 8px 12px; padding: 0; border: 0; background: none; cursor: zoom-in; border-radius: 6px; transition: transform .15s; }
+.board-thumb:hover { transform: scale(1.04); }
+.board-thumb .snap-board { width: 100%; }
+.snap-board.mini .snap-name { display: none; }
+.snap-board.mini .note { color: transparent; padding: 0; box-shadow: 0 1px 1px rgba(0, 0, 0, .25); }
+.snap-board.mini .note::before, .snap-board.mini .note .heart { display: none; }
+.board-zoom { position: fixed; inset: 0; z-index: 300; display: grid; place-items: center; background: rgba(8, 14, 10, .7); cursor: zoom-out; opacity: 0; transition: opacity .2s; }
+.board-zoom.in { opacity: 1; }
+.board-zoom .snap-board { width: min(94vw, calc(90vh * var(--snap-ar))); border-radius: 10px; box-shadow: 0 30px 80px -20px rgba(0, 0, 0, .7); transform: scale(.94); transition: transform .25s cubic-bezier(.3, 1.2, .5, 1); }
+.board-zoom.in .snap-board { transform: none; }
+.board-zoom .snap-name { font-size: .95em; top: 8px; left: 12px; }
+.day-upd { margin: 4px 0 6px; padding: 8px 10px; border-radius: 8px; background: var(--back-line); white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.45; }
+.day-upd mark { background: color-mix(in srgb, var(--accent) 28%, transparent); color: inherit; }
+.fdiv { background: var(--manila); color: var(--manila-ink); box-shadow: -3px 0 8px -5px rgba(0, 0, 0, .4); }
+.ftab { position: absolute; top: -30px; left: var(--tab-x, 0px); height: 28px; padding: 0 12px; border-radius: 7px 7px 0 0; background: var(--manila); color: var(--manila-ink); display: flex; align-items: center; font-size: .74em; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; white-space: nowrap; box-shadow: 0 -2px 4px -2px rgba(0, 0, 0, .25); }
+@media (prefers-reduced-motion: reduce) { .fitem, .fbody { transition: none; } }
+.day { display: flex; flex-direction: column; gap: 4px; min-width: 0; padding: 12px 14px; border-radius: var(--radius); background: var(--back); color: var(--back-ink); }
+.day .name-tag { background: transparent; box-shadow: none; padding: 0; align-self: flex-start; }
+.day-when { font-family: var(--f-display); font-weight: 700; }
+.day .task.dim { opacity: .35; }
+.day mark { background: color-mix(in srgb, var(--accent) 28%, transparent); color: inherit; border-radius: 2px; }
+
+/* Settings */
+.group { display: flex; flex-direction: column; gap: 8px; }
+.seg { display: flex; flex-wrap: wrap; gap: 4px; background: var(--surface-2); padding: 4px; border-radius: 9px; width: fit-content; max-width: 100%; }
+.seg button { border: 0; background: transparent; border-radius: 6px; padding: 5px 12px; font-size: .9em; color: var(--muted); }
+.seg button[aria-pressed="true"] { background: var(--surface); color: var(--fg); font-weight: 700; box-shadow: 0 1px 3px rgba(0, 0, 0, .15); }
+.swatches { display: flex; gap: 10px; flex-wrap: wrap; }
+.swatch { width: 30px; height: 30px; border-radius: 50%; border: 2px solid var(--surface); box-shadow: 0 0 0 1px var(--line); padding: 0; }
+.swatch[aria-pressed="true"] { box-shadow: 0 0 0 2px var(--fg); }
+.positions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; max-width: 280px; }
+.positions button { border: 1px solid var(--line); background: var(--surface); border-radius: 8px; padding: 14px 8px; font-weight: 700; display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.positions button small { font-weight: 400; color: var(--faint); font-size: .75em; }
+.positions button[aria-pressed="true"] { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 16%, var(--surface)); }
+.check { display: flex; gap: 10px; align-items: center; }
+.check input { width: 18px; height: 18px; accent-color: var(--accent); }
+.leave { padding-top: 6px; display: flex; flex-direction: column; gap: 8px; align-items: flex-start; }
+.btn.danger { color: var(--danger); }
+
+.toast {
+  position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(18px + env(safe-area-inset-bottom, 0px)); z-index: 200;
+  background: var(--fg); color: var(--bg); border-radius: 10px; padding: 10px 14px; display: flex; gap: 12px; align-items: center;
+  max-width: calc(100% - 32px); box-sizing: border-box; box-shadow: 0 6px 20px -8px rgba(0, 0, 0, .5); font-size: .92em;
+}
+.toast button { background: transparent; border: 0; color: inherit; font-weight: 700; text-decoration: underline; padding: 0; }
+
+@media (prefers-reduced-motion: no-preference) {
+  .sheet { animation: slide .18s ease-out; }
+  @keyframes slide { from { transform: translateX(24px); opacity: .6; } }
+}
+</style>
+
+<div class="page-map" aria-hidden="true">
+  <svg id="mapSvg" viewBox="-142 -84 91 44" preserveAspectRatio="none" focusable="false">
+    <path class="map-ca" d="M-132.66 -54.13L-132.17 -53.96L-132.53 -53.65L-132.19 -53.68L-132.13 -54.03L-131.67 -54.14L-131.82 -53.84L-131.96 -53.31L-132.52 -53.19L-132.75 -53.31L-132.43 -53.35L-132.85 -53.51L-133.10 -53.92L-133.05 -54.16ZM-131.75 -53.20L-131.63 -52.92L-131.97 -52.88L-131.45 -52.70L-131.59 -52.58L-131.12 -52.22L-131.42 -52.24L-132.17 -52.78L-132.26 -52.91L-132.14 -53.00L-132.55 -53.14ZM-127.20 -50.64L-125.48 -50.32L-124.83 -49.53L-123.99 -49.22L-123.50 -48.58L-123.41 -48.70L-123.31 -48.41L-124.12 -48.44L-125.12 -48.76L-124.81 -49.21L-124.93 -49.01L-125.49 -48.93L-125.83 -49.09L-125.65 -49.19L-126.10 -49.42L-126.52 -49.40L-126.54 -49.59L-126.13 -49.67L-126.90 -49.94L-127.12 -49.88L-127.25 -50.14L-127.86 -50.13L-127.91 -50.45L-127.49 -50.41L-127.46 -50.58L-128.06 -50.50L-128.35 -50.70L-128.30 -50.79L-127.92 -50.86ZM-130.02 -55.89L-130.10 -56.11L-131.82 -56.59L-131.87 -56.79L-132.11 -56.86L-132.03 -57.03L-132.34 -57.08L-132.23 -57.20L-133.40 -58.41L-134.95 -59.29L-135.05 -59.58L-135.47 -59.79L-136.32 -59.60L-136.58 -59.15L-137.44 -58.90L-137.59 -59.23L-139.19 -60.08L-139.08 -60.34L-139.97 -60.18L-141.00 -60.30L-141.00 -69.65L-139.18 -69.52L-137.26 -68.96L-135.26 -68.68L-135.90 -68.93L-135.58 -69.03L-135.91 -69.11L-135.14 -69.47L-134.46 -69.48L-134.41 -69.68L-133.88 -69.51L-134.18 -69.25L-130.67 -70.13L-129.68 -70.19L-129.54 -70.11L-129.65 -70.00L-132.69 -69.26L-133.38 -68.89L-133.20 -68.74L-133.30 -68.85L-132.58 -68.85L-132.72 -69.08L-131.79 -69.43L-131.06 -69.45L-130.97 -69.21L-130.12 -69.72L-128.90 -69.97L-129.16 -69.80L-128.85 -69.75L-127.68 -70.26L-128.17 -70.42L-127.99 -70.57L-127.23 -70.30L-126.25 -69.54L-125.52 -69.35L-125.17 -69.43L-125.36 -69.63L-124.77 -69.99L-124.99 -70.03L-124.56 -70.15L-124.41 -69.77L-124.12 -69.69L-124.48 -69.43L-124.34 -69.36L-123.53 -69.39L-123.03 -69.81L-122.07 -69.82L-117.23 -68.91L-116.06 -68.84L-116.24 -68.97L-115.81 -68.99L-114.99 -68.85L-113.96 -68.40L-115.13 -68.13L-115.43 -67.90L-115.13 -67.82L-112.43 -67.68L-110.07 -67.99L-109.63 -67.73L-109.04 -67.69L-108.85 -67.42L-108.61 -67.60L-107.99 -67.26L-107.99 -67.10L-108.50 -67.09L-107.29 -66.40L-107.71 -66.74L-107.75 -66.96L-107.16 -66.88L-107.96 -67.82L-107.76 -67.91L-107.80 -68.04L-106.43 -68.20L-105.75 -68.59L-108.26 -68.15L-108.72 -68.30L-108.31 -68.61L-106.16 -68.92L-105.68 -68.83L-105.38 -68.41L-104.49 -68.06L-103.47 -68.11L-102.32 -67.74L-100.46 -67.84L-98.92 -67.73L-98.41 -67.81L-98.70 -67.97L-98.63 -68.07L-97.45 -67.62L-97.16 -67.73L-97.21 -67.86L-98.19 -67.92L-98.65 -68.36L-97.41 -68.50L-96.98 -68.26L-96.43 -68.31L-96.72 -68.04L-95.97 -68.25L-96.37 -67.51L-96.14 -67.27L-95.72 -67.32L-95.78 -67.18L-95.53 -67.21L-95.42 -67.01L-96.42 -67.04L-95.79 -66.62L-96.04 -66.94L-95.40 -66.95L-95.26 -67.26L-95.65 -67.74L-95.46 -68.02L-94.74 -68.07L-93.45 -68.62L-93.64 -68.63L-93.85 -69.00L-94.06 -68.78L-94.60 -68.80L-94.09 -69.12L-94.25 -69.15L-94.25 -69.31L-93.62 -69.42L-93.75 -69.23L-93.43 -69.37L-93.53 -69.48L-94.27 -69.45L-94.63 -69.65L-95.96 -69.80L-96.55 -70.21L-96.30 -70.51L-95.88 -70.55L-95.99 -70.62L-95.89 -70.69L-96.26 -70.64L-96.55 -70.81L-96.45 -71.24L-96.06 -71.41L-95.56 -71.34L-95.41 -71.49L-95.84 -71.60L-94.61 -71.99L-94.31 -71.77L-93.75 -71.74L-93.03 -71.34L-92.88 -71.07L-92.98 -70.85L-91.57 -70.18L-92.32 -70.24L-92.51 -70.10L-91.98 -70.04L-92.89 -69.67L-91.91 -69.53L-91.20 -69.65L-91.44 -69.53L-90.42 -69.46L-91.24 -69.29L-90.48 -68.88L-90.58 -68.48L-90.25 -68.27L-89.90 -68.49L-89.67 -69.02L-89.28 -69.26L-88.04 -68.81L-87.81 -68.35L-88.35 -68.29L-88.31 -67.95L-87.36 -67.18L-86.56 -67.48L-86.40 -67.80L-85.95 -68.07L-85.69 -68.67L-84.87 -68.77L-85.11 -68.84L-84.86 -69.07L-85.39 -69.23L-85.51 -69.85L-82.62 -69.69L-82.39 -69.60L-82.76 -69.49L-82.31 -69.41L-82.23 -69.25L-81.32 -69.14L-81.96 -68.88L-81.38 -68.85L-81.28 -68.66L-82.55 -68.45L-82.22 -68.15L-82.01 -68.19L-82.06 -67.93L-81.29 -67.50L-81.39 -67.19L-82.64 -66.59L-83.52 -66.37L-84.00 -66.73L-84.85 -67.03L-85.11 -66.89L-84.64 -66.90L-83.80 -66.24L-84.48 -66.18L-85.60 -66.57L-86.71 -66.52L-86.68 -66.36L-85.96 -66.12L-87.45 -65.34L-87.97 -65.35L-89.75 -65.94L-91.43 -65.95L-89.92 -65.78L-88.97 -65.35L-87.03 -65.20L-88.11 -64.18L-88.82 -63.99L-89.20 -64.11L-89.13 -63.97L-90.04 -64.14L-89.86 -63.96L-90.17 -63.98L-90.01 -63.80L-90.15 -63.69L-90.81 -63.58L-93.70 -64.15L-93.56 -63.86L-93.27 -63.84L-93.38 -63.95L-92.16 -63.69L-92.47 -63.56L-91.84 -63.70L-90.97 -63.44L-90.71 -63.30L-90.70 -63.06L-91.45 -62.80L-92.36 -62.82L-91.94 -62.59L-92.55 -62.55L-92.77 -62.35L-92.53 -62.17L-93.21 -62.36L-92.90 -62.22L-93.33 -61.93L-93.58 -61.94L-93.31 -61.77L-93.91 -61.48L-94.51 -60.60L-94.76 -60.50L-94.65 -60.42L-94.79 -59.27L-94.96 -59.07L-94.29 -58.72L-94.33 -58.30L-94.12 -58.74L-93.18 -58.73L-92.43 -57.32L-92.80 -56.92L-90.59 -57.22L-88.83 -56.81L-87.48 -56.02L-85.68 -55.60L-85.22 -55.35L-85.37 -55.08L-85.06 -55.29L-83.91 -55.31L-82.39 -55.07L-82.22 -54.81L-82.42 -54.24L-82.14 -53.82L-82.29 -53.03L-81.60 -52.43L-81.83 -52.22L-81.47 -52.20L-80.66 -51.76L-80.44 -51.39L-80.85 -51.12L-80.48 -51.31L-80.10 -51.28L-79.35 -50.76L-79.71 -51.12L-79.69 -51.35L-79.30 -51.62L-78.90 -51.20L-78.73 -51.50L-78.98 -51.78L-78.45 -52.26L-78.75 -52.66L-79.10 -53.66L-78.94 -53.84L-79.01 -54.02L-79.24 -54.10L-79.14 -54.17L-79.71 -54.67L-77.78 -55.29L-76.76 -56.00L-76.55 -56.36L-76.57 -57.18L-76.89 -57.76L-78.51 -58.68L-78.43 -58.90L-77.76 -59.38L-77.86 -59.48L-77.73 -59.68L-77.35 -59.58L-77.49 -59.68L-77.29 -60.02L-77.59 -60.09L-77.45 -60.15L-77.68 -60.43L-77.50 -60.54L-77.79 -60.64L-77.60 -60.82L-78.18 -60.82L-77.51 -61.56L-78.02 -61.83L-78.13 -62.28L-77.37 -62.57L-75.82 -62.32L-75.67 -62.25L-75.79 -62.18L-75.34 -62.31L-74.63 -62.11L-73.71 -62.47L-72.69 -62.13L-72.77 -61.84L-72.23 -61.83L-72.04 -61.68L-72.21 -61.59L-71.64 -61.62L-71.85 -61.44L-71.42 -61.16L-70.28 -61.07L-69.99 -60.86L-69.47 -61.01L-69.40 -60.85L-69.75 -60.49L-69.67 -60.08L-70.66 -60.03L-69.73 -59.92L-69.58 -59.68L-69.68 -59.34L-69.35 -59.30L-69.53 -58.87L-69.78 -58.96L-70.16 -58.76L-69.79 -58.69L-68.70 -58.90L-68.38 -58.74L-68.23 -58.48L-68.36 -58.16L-69.04 -57.90L-68.41 -58.05L-68.02 -58.48L-67.89 -58.30L-68.06 -58.14L-67.75 -58.40L-67.68 -57.99L-67.57 -58.21L-66.72 -58.49L-66.36 -58.79L-66.00 -58.43L-66.04 -58.82L-65.38 -59.06L-65.70 -59.21L-65.41 -59.31L-65.48 -59.47L-65.04 -59.39L-65.41 -59.54L-65.43 -59.78L-65.03 -59.77L-65.17 -59.91L-64.82 -60.33L-64.50 -60.27L-64.42 -60.17L-64.77 -60.01L-64.28 -60.06L-64.23 -59.74L-64.06 -59.82L-63.75 -59.51L-63.95 -59.38L-63.42 -59.19L-63.97 -59.05L-63.25 -59.07L-63.28 -58.87L-63.05 -58.88L-62.87 -58.67L-63.54 -58.33L-62.61 -58.50L-62.81 -58.20L-63.26 -58.01L-62.49 -58.15L-61.96 -57.91L-61.97 -57.61L-62.49 -57.49L-61.92 -57.42L-61.98 -57.25L-61.33 -57.01L-61.37 -56.68L-62.50 -56.80L-61.74 -56.53L-61.94 -56.42L-61.43 -56.36L-61.71 -56.23L-61.36 -56.22L-61.30 -56.05L-61.45 -56.00L-60.34 -55.79L-60.41 -55.65L-60.19 -55.48L-60.62 -55.06L-59.76 -55.31L-59.44 -55.18L-59.84 -54.81L-59.26 -55.20L-59.00 -55.15L-58.78 -54.84L-57.96 -54.88L-57.40 -54.59L-58.63 -54.05L-59.82 -53.83L-60.14 -53.60L-60.40 -53.65L-60.10 -53.49L-60.33 -53.27L-58.65 -53.98L-57.94 -54.09L-58.32 -54.11L-58.19 -54.23L-57.42 -54.16L-57.13 -53.79L-57.52 -53.61L-57.33 -53.47L-56.46 -53.76L-55.86 -53.34L-55.80 -52.64L-56.32 -52.54L-55.74 -52.47L-56.01 -52.39L-55.69 -52.14L-56.98 -51.46L-58.51 -51.29L-59.88 -50.32L-61.72 -50.10L-62.71 -50.30L-66.41 -50.22L-66.94 -49.99L-67.37 -49.35L-68.28 -49.20L-69.67 -48.20L-71.02 -48.46L-69.77 -48.10L-69.99 -47.74L-71.27 -46.80L-72.20 -46.56L-72.98 -46.21L-73.47 -45.74L-74.31 -45.53L-73.98 -45.35L-75.40 -44.77L-76.46 -44.06L-76.82 -43.63L-78.85 -43.58L-79.17 -43.47L-78.91 -42.91L-79.04 -42.80L-80.25 -42.37L-81.28 -42.21L-82.44 -41.68L-83.03 -41.83L-83.15 -42.14L-82.55 -42.62L-82.14 -43.57L-82.55 -45.35L-83.59 -45.82L-83.47 -45.99L-83.62 -46.12L-83.98 -46.08L-84.15 -46.54L-84.56 -46.46L-84.88 -46.90L-88.38 -48.30L-89.46 -48.00L-90.92 -48.21L-91.52 -48.06L-92.00 -48.30L-92.41 -48.28L-93.00 -48.61L-93.71 -48.53L-94.62 -48.74L-94.86 -49.30L-95.15 -49.37L-95.16 -48.99L-123.08 -48.98L-123.23 -49.26L-122.88 -49.40L-123.28 -49.34L-123.19 -49.68L-123.53 -49.40L-124.03 -49.60L-123.99 -49.74L-123.82 -49.59L-123.58 -49.68L-123.88 -49.74L-123.83 -50.15L-123.95 -50.18L-123.98 -49.88L-124.28 -49.77L-124.78 -50.02L-125.06 -50.42L-124.86 -50.87L-125.06 -50.51L-125.48 -50.50L-125.54 -50.65L-125.64 -50.47L-126.09 -50.50L-126.45 -50.59L-125.91 -50.70L-126.51 -50.68L-126.37 -50.84L-126.52 -50.87L-126.52 -51.06L-127.06 -50.87L-127.71 -51.15L-127.42 -51.61L-126.69 -51.70L-127.34 -51.71L-127.71 -51.49L-127.87 -51.78L-127.73 -51.99L-127.86 -51.99L-127.80 -52.19L-127.24 -52.39L-126.71 -52.06L-127.19 -52.46L-126.95 -52.72L-127.02 -52.84L-127.07 -52.65L-127.84 -52.25L-128.10 -51.79L-128.36 -52.16L-128.04 -52.32L-127.94 -52.55L-128.27 -52.36L-128.05 -52.91L-128.36 -52.83L-128.52 -53.14L-129.17 -53.53L-128.85 -53.70L-128.90 -53.56L-127.93 -53.28L-128.67 -53.55L-128.76 -53.75L-128.53 -53.86L-128.96 -53.84L-129.56 -53.25L-130.33 -53.72L-130.04 -54.13L-129.62 -54.23L-130.09 -54.18L-130.43 -54.42L-129.56 -55.46L-129.79 -55.56L-130.05 -55.06ZM-109.82 -78.65L-109.36 -78.49L-109.39 -78.34L-111.17 -78.39L-111.52 -78.28L-113.17 -78.28L-113.29 -78.33L-113.15 -78.41L-110.62 -78.76ZM-110.46 -78.10L-109.62 -78.07L-110.86 -77.83L-110.15 -77.76L-110.20 -77.53L-111.95 -77.34L-113.17 -77.53L-113.22 -77.90ZM-115.55 -77.36L-116.33 -77.14L-115.81 -76.94L-116.25 -76.90L-115.94 -76.74L-116.08 -76.65L-117.00 -76.53L-117.11 -76.32L-117.49 -76.27L-118.02 -76.45L-117.78 -76.78L-118.20 -76.76L-118.79 -76.51L-118.62 -76.37L-118.99 -76.15L-119.58 -76.33L-119.74 -76.12L-119.53 -76.00L-120.41 -75.83L-120.85 -76.18L-121.22 -75.98L-122.53 -75.95L-122.59 -76.16L-122.90 -76.13L-122.42 -76.39L-121.56 -76.45L-119.09 -77.30L-116.84 -77.34L-116.70 -77.38L-117.04 -77.46L-116.51 -77.55ZM-108.29 -76.06L-107.72 -76.00L-108.02 -75.80L-107.21 -75.89L-106.91 -75.68L-106.69 -75.82L-106.85 -75.95L-106.53 -76.05L-105.61 -75.93L-105.48 -75.70L-105.86 -75.19L-106.96 -74.94L-108.83 -75.07L-111.73 -74.50L-113.02 -74.40L-113.84 -74.49L-114.31 -74.71L-111.67 -75.02L-111.09 -75.26L-113.71 -75.07L-113.85 -75.26L-113.47 -75.42L-114.01 -75.43L-114.17 -75.24L-114.52 -75.28L-114.36 -75.17L-114.45 -75.09L-115.02 -74.98L-115.48 -75.10L-115.73 -74.97L-117.60 -75.27L-117.26 -75.46L-115.14 -75.68L-117.16 -75.65L-114.99 -75.90L-116.65 -75.93L-116.59 -76.10L-116.21 -76.19L-114.78 -76.17L-115.80 -76.25L-115.58 -76.44L-114.53 -76.50L-113.82 -76.21L-112.70 -76.20L-111.87 -75.94L-112.06 -75.83L-111.55 -75.82L-111.05 -75.55L-109.09 -75.51L-108.95 -75.70L-109.87 -75.93L-109.43 -76.11L-110.31 -76.40L-108.83 -76.82L-108.47 -76.74L-108.63 -76.59L-108.12 -76.23L-108.38 -76.12ZM-114.52 -72.59L-113.58 -72.65L-113.29 -72.95L-112.75 -72.99L-111.27 -72.71L-111.89 -72.36L-111.67 -72.30L-110.21 -72.66L-110.66 -73.01L-110.01 -72.98L-108.76 -72.55L-108.19 -71.72L-107.81 -71.63L-107.30 -71.90L-107.70 -72.15L-108.24 -73.15L-107.93 -73.22L-108.03 -73.35L-106.48 -73.20L-105.41 -72.79L-104.88 -71.98L-104.38 -71.58L-104.51 -71.06L-103.59 -70.63L-103.08 -70.51L-103.05 -70.65L-101.56 -70.14L-101.04 -70.11L-100.98 -69.68L-101.48 -69.85L-101.65 -69.70L-102.24 -69.84L-102.60 -69.72L-102.62 -69.55L-103.43 -69.67L-103.03 -69.43L-103.12 -69.20L-102.15 -69.49L-101.98 -69.43L-102.04 -69.26L-101.79 -69.18L-101.86 -69.02L-102.89 -68.82L-105.10 -68.92L-105.02 -69.08L-106.14 -69.16L-106.66 -69.44L-107.44 -69.00L-109.47 -68.68L-113.13 -68.49L-113.62 -68.84L-113.69 -69.19L-116.51 -69.43L-117.10 -69.80L-117.19 -70.05L-114.59 -70.31L-111.63 -70.31L-113.76 -70.69L-117.59 -70.63L-118.26 -70.89L-118.38 -70.97L-118.27 -71.03L-115.30 -71.49L-117.94 -71.39L-118.23 -71.47L-117.74 -71.66L-118.99 -71.76L-118.94 -71.99L-118.21 -72.26L-118.48 -72.43L-118.37 -72.53L-116.57 -73.06L-114.30 -73.33L-114.05 -72.96ZM-119.74 -74.11L-119.21 -74.20L-119.12 -74.02L-118.54 -74.24L-117.51 -74.23L-115.51 -73.62L-115.45 -73.44L-118.96 -72.68L-119.51 -72.30L-120.18 -72.21L-120.62 -71.51L-121.75 -71.44L-123.09 -71.09L-124.01 -71.68L-125.84 -71.98L-124.99 -72.59L-124.97 -72.84L-124.58 -72.93L-124.80 -73.13L-123.80 -73.77L-124.19 -73.90L-124.70 -74.35L-121.50 -74.54L-119.56 -74.23ZM-69.49 -83.02L-66.42 -82.93L-68.47 -82.65L-64.98 -82.90L-63.64 -82.81L-63.09 -82.56L-63.25 -82.45L-61.70 -82.49L-61.27 -82.28L-63.59 -81.85L-68.69 -81.29L-64.83 -81.44L-69.55 -80.38L-70.71 -80.54L-70.26 -80.23L-72.06 -80.12L-70.57 -80.09L-71.35 -79.91L-71.11 -79.85L-71.39 -79.76L-72.44 -79.69L-74.39 -79.87L-73.47 -79.76L-73.20 -79.60L-73.36 -79.50L-76.90 -79.51L-75.60 -79.24L-74.48 -79.23L-74.53 -79.05L-78.58 -79.08L-77.88 -78.94L-76.25 -79.01L-74.43 -78.72L-74.88 -78.54L-76.42 -78.51L-75.19 -78.33L-75.97 -77.99L-78.01 -77.95L-78.08 -77.52L-78.49 -77.37L-80.57 -77.32L-81.66 -77.53L-81.28 -77.37L-82.06 -77.30L-81.84 -77.21L-79.50 -77.20L-78.98 -76.89L-78.29 -76.98L-77.98 -76.75L-78.28 -76.57L-80.80 -76.17L-81.00 -76.21L-80.83 -76.37L-80.97 -76.47L-82.53 -76.72L-82.23 -76.47L-83.89 -76.45L-84.22 -76.67L-84.28 -76.36L-85.14 -76.30L-86.45 -76.58L-86.68 -76.38L-87.35 -76.45L-87.49 -76.59L-87.50 -76.39L-88.40 -76.41L-88.49 -76.77L-88.61 -76.65L-88.54 -76.42L-89.57 -76.49L-89.50 -76.83L-88.56 -77.07L-86.81 -77.19L-87.68 -77.44L-88.09 -77.72L-88.02 -77.78L-86.76 -77.86L-85.59 -77.46L-84.74 -77.36L-83.61 -77.44L-82.59 -77.99L-83.93 -77.52L-85.09 -77.51L-85.29 -77.56L-85.29 -77.76L-85.55 -77.93L-84.22 -78.18L-84.91 -78.24L-84.78 -78.53L-85.59 -78.11L-86.22 -78.08L-85.92 -78.34L-86.91 -78.13L-87.55 -78.18L-87.49 -78.42L-86.81 -78.77L-85.00 -78.91L-83.27 -78.77L-81.75 -78.98L-84.41 -79.00L-84.57 -79.07L-84.38 -79.12L-83.58 -79.05L-85.27 -79.66L-86.42 -79.84L-86.62 -80.12L-86.50 -80.26L-83.72 -80.23L-81.69 -79.69L-80.48 -79.61L-80.12 -79.67L-81.01 -79.69L-82.99 -80.32L-76.86 -80.87L-78.72 -80.95L-78.29 -81.17L-76.88 -81.43L-79.20 -81.12L-79.76 -80.84L-81.01 -80.66L-82.89 -80.58L-82.22 -80.77L-82.50 -80.76L-85.15 -80.52L-86.53 -80.61L-86.44 -80.73L-85.25 -80.99L-83.29 -81.15L-85.78 -81.04L-87.71 -80.66L-89.17 -80.94L-86.48 -81.04L-84.94 -81.29L-89.62 -81.03L-89.95 -81.17L-89.21 -81.25L-89.68 -81.33L-87.60 -81.53L-90.42 -81.41L-90.55 -81.46L-89.82 -81.63L-91.29 -81.57L-91.65 -81.68L-88.06 -82.10L-85.05 -81.98L-86.62 -82.22L-84.90 -82.45L-82.63 -82.08L-82.33 -82.09L-82.75 -82.20L-82.54 -82.25L-79.47 -81.85L-82.45 -82.39L-81.68 -82.52L-82.12 -82.63L-80.81 -82.59L-81.18 -82.75L-81.01 -82.78L-78.75 -82.68L-80.16 -82.91L-77.62 -82.90L-76.01 -82.54L-75.64 -82.64L-77.13 -83.01L-74.41 -83.01L-72.66 -82.72L-73.44 -82.91L-72.81 -83.08L-70.94 -82.90L-71.42 -83.02L-71.08 -83.08ZM-95.49 -77.79L-93.30 -77.74L-93.13 -77.66L-93.55 -77.47L-95.99 -77.48L-96.26 -77.59L-96.19 -77.70ZM-93.54 -75.03L-93.57 -74.67L-94.54 -74.64L-96.39 -75.00L-96.57 -75.10L-95.95 -75.44L-94.88 -75.63L-93.91 -75.42L-93.50 -75.14ZM-100.00 -73.95L-99.16 -73.73L-97.17 -73.82L-97.00 -73.67L-97.63 -73.50L-97.27 -73.39L-98.42 -72.94L-97.63 -73.03L-97.08 -72.76L-97.13 -72.63L-96.59 -72.71L-96.45 -72.55L-96.80 -72.32L-96.59 -72.20L-96.77 -72.05L-96.61 -71.83L-97.58 -71.63L-98.18 -71.66L-98.32 -71.85L-98.46 -71.77L-98.20 -71.44L-98.66 -71.30L-99.17 -71.37L-100.59 -72.15L-101.72 -72.32L-102.71 -72.78L-102.20 -73.08L-101.27 -72.72L-100.49 -72.77L-100.40 -72.98L-100.13 -72.91L-100.54 -73.20L-99.82 -73.21L-100.37 -73.36L-100.89 -73.28L-101.52 -73.49L-100.98 -73.60L-100.52 -73.45L-100.96 -73.79L-99.99 -73.79L-100.23 -73.89ZM-84.92 -65.26L-84.50 -65.46L-82.05 -64.64L-81.68 -64.21L-81.89 -64.02L-80.83 -64.09L-80.26 -63.80L-81.05 -63.46L-82.38 -63.71L-82.47 -63.93L-83.03 -64.02L-83.07 -64.16L-83.49 -64.10L-83.73 -63.81L-84.63 -63.31L-85.24 -63.14L-85.50 -63.14L-85.77 -63.70L-87.18 -63.60L-86.93 -63.90L-86.25 -64.14L-86.37 -64.57L-86.08 -65.53L-85.81 -65.83L-85.55 -65.92L-85.24 -65.80L-85.11 -65.62L-85.24 -65.51ZM-97.70 -76.47L-97.53 -76.11L-97.60 -75.85L-97.89 -75.76L-97.41 -75.67L-97.34 -75.42L-97.88 -75.42L-97.66 -75.15L-98.07 -75.20L-97.99 -75.05L-100.23 -75.01L-100.48 -75.19L-100.14 -75.25L-100.71 -75.41L-99.19 -75.70L-102.59 -75.51L-102.80 -75.60L-101.94 -75.88L-100.97 -75.80L-101.82 -76.04L-101.56 -76.24L-102.14 -76.28L-101.79 -76.45L-99.87 -75.92L-99.69 -75.96L-100.11 -76.12L-99.54 -76.15L-100.41 -76.24L-99.98 -76.31L-100.83 -76.52L-99.81 -76.63L-98.89 -76.47L-99.02 -76.61L-98.71 -76.69ZM-103.43 -79.32L-102.92 -79.23L-102.58 -78.88L-101.70 -79.08L-101.04 -78.94L-101.13 -78.80L-100.44 -78.82L-99.61 -78.58L-99.85 -78.44L-99.05 -78.07L-99.16 -77.86L-100.27 -77.83L-101.07 -78.19L-102.61 -78.25L-102.73 -78.37L-104.32 -78.27L-104.88 -78.40L-104.91 -78.55L-103.57 -78.54L-104.02 -78.63L-103.37 -78.74L-104.18 -78.78L-103.88 -78.90L-104.15 -78.99L-104.90 -78.81L-104.75 -79.03L-105.57 -79.06L-105.44 -79.30ZM-91.89 -81.13L-90.64 -80.59L-89.24 -80.51L-89.20 -80.26L-88.86 -80.17L-88.20 -80.11L-88.61 -80.26L-88.52 -80.42L-87.67 -80.37L-87.63 -80.19L-87.92 -80.10L-86.98 -79.89L-87.30 -79.58L-86.34 -79.63L-86.01 -79.48L-85.65 -79.61L-85.04 -79.28L-86.96 -78.97L-87.62 -78.68L-87.92 -78.75L-87.83 -79.05L-88.04 -79.00L-88.25 -78.67L-87.98 -78.54L-88.74 -78.58L-88.61 -78.39L-88.82 -78.19L-90.04 -78.61L-89.49 -78.17L-90.46 -78.33L-90.65 -78.31L-90.33 -78.19L-90.61 -78.15L-92.35 -78.31L-92.85 -78.46L-91.87 -78.54L-93.27 -78.61L-93.62 -78.77L-93.16 -78.78L-94.17 -78.97L-91.30 -79.37L-92.82 -79.45L-95.10 -79.29L-95.73 -79.42L-95.66 -79.53L-94.40 -79.74L-95.86 -79.67L-96.46 -79.85L-96.77 -80.14L-94.65 -80.05L-94.26 -80.20L-95.41 -80.13L-96.39 -80.32L-95.55 -80.37L-96.15 -80.55L-96.13 -80.69L-95.93 -80.72L-93.93 -80.56L-95.51 -80.84L-94.98 -81.05L-93.29 -81.10L-94.18 -81.34L-93.03 -81.35ZM-94.29 -76.91L-93.23 -76.77L-93.53 -76.45L-92.99 -76.62L-91.31 -76.68L-90.54 -76.50L-91.41 -76.46L-89.29 -76.30L-89.41 -76.19L-91.41 -76.22L-89.28 -75.79L-89.65 -75.57L-88.92 -75.45L-88.65 -75.66L-88.20 -75.51L-87.26 -75.62L-85.95 -75.40L-85.97 -75.53L-83.93 -75.82L-82.15 -75.83L-80.32 -75.63L-80.12 -75.56L-80.26 -75.48L-79.66 -75.45L-79.51 -75.26L-80.38 -75.03L-79.40 -74.92L-80.35 -74.90L-80.15 -74.80L-80.26 -74.58L-81.94 -74.47L-83.06 -74.63L-83.10 -74.82L-83.52 -74.90L-83.34 -74.77L-83.53 -74.59L-84.43 -74.51L-85.06 -74.61L-88.42 -74.49L-88.56 -74.57L-88.34 -74.78L-88.53 -74.83L-89.56 -74.56L-90.55 -74.61L-90.97 -74.71L-90.88 -74.82L-91.13 -74.65L-91.55 -74.66L-91.96 -74.79L-92.17 -75.05L-92.08 -75.12L-92.39 -75.26L-92.41 -75.41L-92.07 -75.66L-92.18 -75.85L-93.09 -76.35L-95.27 -76.26L-96.04 -76.49L-95.65 -76.58L-96.88 -76.74L-96.40 -76.80L-96.76 -76.97L-95.85 -77.07ZM-96.21 -78.53L-94.92 -78.39L-95.33 -78.22L-94.93 -78.11L-95.09 -77.99L-96.99 -77.81L-97.66 -78.09L-96.94 -78.15L-98.05 -78.33L-98.32 -78.48L-98.06 -78.56L-98.33 -78.77L-97.38 -78.78ZM-93.17 -74.16L-90.36 -73.87L-91.55 -73.24L-91.46 -73.15L-92.12 -72.75L-94.21 -72.76L-93.55 -72.53L-93.97 -72.13L-94.14 -72.00L-95.19 -72.03L-95.25 -72.50L-95.60 -72.88L-95.64 -73.67L-94.70 -73.66L-95.15 -73.91L-94.97 -74.04ZM-97.44 -69.64L-96.30 -69.34L-95.86 -68.95L-95.29 -68.81L-96.60 -68.46L-98.88 -68.92L-99.25 -68.86L-99.56 -69.05L-98.50 -69.31L-98.55 -69.57L-98.04 -69.46L-98.29 -69.63L-98.24 -69.78L-97.79 -69.86ZM-61.11 -45.94L-60.86 -45.98L-61.06 -45.70L-60.74 -45.75L-60.46 -45.97L-60.73 -45.96L-60.30 -46.31L-59.85 -46.14L-59.84 -45.94L-60.12 -45.82L-60.67 -45.59L-61.29 -45.57L-61.45 -45.72L-61.41 -46.17L-60.87 -46.80L-60.41 -47.00L-60.33 -46.74L-60.49 -46.27ZM-67.12 -45.17L-67.37 -45.17L-67.43 -45.60L-67.80 -45.73L-67.81 -47.08L-68.31 -47.36L-68.94 -47.21L-69.24 -47.46L-70.01 -46.71L-70.30 -45.91L-70.86 -45.27L-71.33 -45.29L-71.52 -45.01L-74.71 -45.00L-73.56 -45.42L-73.16 -46.01L-72.11 -46.55L-70.52 -47.03L-68.82 -48.37L-66.60 -49.13L-65.40 -49.26L-64.26 -48.92L-64.21 -48.81L-64.51 -48.84L-64.24 -48.69L-64.35 -48.42L-65.26 -48.02L-65.93 -48.19L-66.70 -48.02L-65.85 -47.91L-65.61 -47.67L-65.00 -47.85L-64.77 -47.67L-64.91 -47.37L-65.32 -47.10L-64.83 -47.06L-64.91 -46.89L-64.54 -46.24L-63.92 -46.17L-63.83 -46.11L-64.06 -46.02L-63.70 -45.86L-62.70 -45.74L-62.75 -45.65L-61.95 -45.87L-61.77 -45.66L-61.35 -45.57L-61.28 -45.44L-61.46 -45.37L-61.03 -45.29L-63.30 -44.64L-63.60 -44.68L-63.61 -44.48L-64.00 -44.65L-64.10 -44.49L-64.29 -44.55L-64.28 -44.33L-65.48 -43.52L-66.13 -43.81L-66.19 -44.14L-65.87 -44.57L-66.09 -44.50L-64.45 -45.34L-64.14 -45.02L-64.09 -45.22L-63.37 -45.36L-64.87 -45.36L-64.32 -45.84L-64.63 -45.95L-64.78 -45.64L-65.89 -45.22L-66.11 -45.32L-66.03 -45.42L-66.44 -45.10ZM-55.46 -51.54L-56.03 -51.33L-55.80 -51.03L-56.70 -50.06L-56.82 -49.61L-56.18 -50.12L-56.16 -49.94L-55.50 -49.98L-56.14 -49.62L-55.87 -49.67L-56.09 -49.45L-55.38 -49.49L-55.35 -49.37L-55.23 -49.51L-55.35 -49.08L-54.50 -49.53L-54.45 -49.33L-53.96 -49.44L-53.62 -49.32L-53.57 -49.14L-54.16 -48.79L-53.85 -48.81L-53.97 -48.71L-53.71 -48.66L-54.11 -48.39L-53.04 -48.66L-53.13 -48.40L-53.87 -48.02L-53.64 -48.02L-53.86 -47.79L-53.60 -47.66L-53.28 -48.00L-52.88 -48.13L-53.17 -47.65L-53.12 -47.45L-52.71 -47.75L-52.67 -47.47L-52.89 -47.05L-53.11 -46.66L-53.59 -46.64L-53.60 -47.15L-54.13 -46.84L-53.85 -47.44L-54.19 -47.86L-54.49 -47.40L-54.47 -47.55L-54.86 -47.38L-55.32 -46.91L-55.79 -46.87L-55.92 -47.02L-54.78 -47.66L-55.37 -47.66L-55.58 -47.46L-56.13 -47.50L-55.87 -47.59L-55.86 -47.82L-56.77 -47.57L-58.34 -47.73L-59.12 -47.57L-59.32 -47.74L-59.27 -48.00L-58.33 -48.52L-59.17 -48.56L-58.84 -48.75L-58.91 -48.65L-58.71 -48.60L-58.41 -49.08L-57.99 -48.99L-58.10 -49.08L-57.98 -49.23L-58.21 -49.39L-58.02 -49.54L-57.79 -49.49L-57.93 -49.70L-57.43 -50.51L-57.18 -50.62L-57.30 -50.70L-57.04 -51.01L-56.68 -51.33L-56.03 -51.57ZM-86.59 -71.01L-85.64 -71.15L-84.82 -71.03L-84.70 -71.63L-85.34 -71.70L-85.91 -71.99L-85.32 -72.23L-84.28 -72.04L-84.84 -72.31L-84.62 -72.38L-85.34 -72.42L-85.65 -72.72L-85.26 -72.95L-84.26 -72.80L-85.46 -73.11L-85.02 -73.34L-83.78 -73.42L-83.90 -73.53L-82.66 -73.73L-81.60 -73.70L-81.15 -73.31L-80.60 -73.12L-80.59 -72.93L-80.28 -72.75L-81.23 -72.31L-80.61 -72.45L-80.94 -72.21L-80.69 -72.10L-80.92 -72.07L-80.92 -71.91L-80.18 -72.21L-79.88 -72.18L-80.11 -72.33L-79.83 -72.45L-79.00 -72.27L-79.01 -72.04L-78.58 -71.88L-78.86 -72.10L-78.70 -72.35L-77.52 -72.18L-78.29 -72.36L-78.48 -72.47L-78.42 -72.57L-77.25 -72.74L-75.18 -72.43L-75.05 -72.23L-75.92 -71.72L-75.15 -72.06L-74.27 -72.04L-74.32 -71.84L-75.21 -71.71L-74.70 -71.68L-75.00 -71.22L-74.49 -71.65L-73.87 -71.77L-73.71 -71.72L-74.20 -71.40L-73.71 -71.59L-73.18 -71.28L-73.28 -71.54L-72.90 -71.68L-71.64 -71.52L-71.22 -71.24L-72.63 -70.83L-71.74 -71.05L-70.67 -71.05L-70.76 -70.79L-71.89 -70.43L-71.28 -70.50L-71.43 -70.13L-70.98 -70.58L-70.56 -70.74L-69.17 -70.76L-68.36 -70.48L-70.06 -70.04L-68.78 -70.20L-69.01 -69.98L-68.74 -69.94L-68.06 -70.32L-67.36 -70.03L-67.17 -69.80L-69.25 -69.51L-68.51 -69.58L-66.69 -69.29L-66.80 -69.15L-67.94 -69.25L-69.04 -69.10L-67.83 -69.07L-67.75 -68.93L-67.88 -68.78L-69.32 -68.86L-68.33 -68.73L-67.94 -68.52L-66.74 -68.46L-67.03 -68.33L-66.83 -68.22L-66.92 -68.07L-66.66 -68.03L-66.63 -68.21L-66.21 -68.28L-66.44 -67.83L-65.94 -68.07L-65.86 -67.92L-65.51 -67.97L-65.54 -67.77L-65.40 -67.68L-65.41 -67.88L-64.92 -68.03L-65.02 -67.79L-64.64 -67.84L-63.85 -67.57L-64.08 -67.50L-64.01 -67.35L-64.70 -67.35L-63.84 -67.26L-63.59 -67.38L-63.04 -67.23L-63.70 -66.82L-62.38 -66.91L-62.12 -67.05L-61.30 -66.65L-62.12 -66.64L-61.58 -66.41L-61.86 -66.31L-62.55 -66.41L-62.40 -66.32L-62.53 -66.23L-61.99 -66.03L-62.59 -66.03L-62.38 -65.83L-62.66 -65.64L-63.17 -65.66L-63.46 -65.85L-63.42 -65.71L-63.65 -65.66L-63.34 -65.62L-63.36 -65.23L-63.61 -64.93L-64.35 -65.17L-64.27 -65.40L-64.55 -65.12L-65.40 -65.76L-64.45 -66.32L-65.00 -66.08L-65.82 -66.00L-65.66 -66.20L-66.06 -66.13L-66.99 -66.63L-67.31 -66.57L-67.23 -66.31L-67.88 -66.47L-67.18 -66.03L-67.35 -65.93L-68.46 -66.25L-68.75 -66.20L-68.22 -66.08L-68.26 -65.94L-67.87 -65.77L-67.94 -65.56L-67.57 -65.64L-67.12 -65.44L-67.34 -65.35L-66.83 -65.07L-66.70 -64.82L-66.63 -65.00L-66.22 -64.85L-66.21 -64.72L-65.94 -64.89L-65.43 -64.73L-65.27 -64.63L-65.53 -64.51L-65.08 -64.44L-65.58 -64.29L-65.17 -64.03L-64.68 -64.03L-64.80 -63.92L-64.41 -63.71L-64.56 -63.68L-64.51 -63.26L-64.67 -63.24L-65.19 -63.76L-65.05 -63.23L-64.67 -62.92L-65.16 -62.93L-65.11 -62.63L-66.22 -63.11L-66.23 -62.99L-66.42 -63.03L-66.66 -63.26L-66.72 -63.08L-67.89 -63.73L-67.76 -63.42L-68.49 -63.73L-68.91 -63.70L-68.14 -63.17L-67.68 -63.09L-67.74 -63.01L-65.98 -62.21L-66.13 -62.10L-66.06 -61.91L-66.26 -61.87L-68.54 -62.26L-69.13 -62.42L-69.60 -62.77L-70.80 -62.91L-71.11 -63.00L-70.95 -63.12L-71.35 -63.07L-71.99 -63.42L-71.38 -63.58L-72.29 -63.73L-72.18 -63.89L-72.50 -63.82L-73.45 -64.40L-73.27 -64.58L-73.91 -64.58L-74.07 -64.43L-74.13 -64.61L-74.68 -64.83L-74.91 -64.79L-74.64 -64.56L-74.89 -64.47L-75.71 -64.52L-75.77 -64.39L-76.72 -64.24L-77.79 -64.37L-78.19 -64.75L-77.99 -65.02L-77.36 -65.20L-77.46 -65.36L-77.33 -65.45L-75.83 -65.23L-75.52 -65.06L-75.59 -64.90L-75.45 -64.84L-75.36 -65.01L-75.80 -65.30L-73.55 -65.48L-73.74 -65.77L-74.42 -66.17L-73.03 -66.73L-72.79 -67.03L-72.22 -67.26L-73.28 -68.36L-73.82 -68.36L-73.85 -68.70L-74.12 -68.70L-73.99 -68.55L-74.42 -68.58L-74.91 -68.82L-74.74 -68.91L-74.95 -68.96L-74.81 -69.06L-76.59 -68.70L-76.56 -69.01L-75.86 -69.06L-75.67 -69.16L-75.75 -69.30L-76.47 -69.47L-76.52 -69.59L-76.23 -69.66L-77.09 -69.64L-76.86 -69.78L-77.59 -69.85L-77.77 -70.24L-78.28 -70.23L-79.07 -70.60L-79.40 -70.40L-78.93 -70.29L-78.82 -70.01L-79.52 -69.89L-81.56 -70.11L-80.92 -69.85L-80.92 -69.73L-81.56 -69.94L-82.30 -69.84L-83.15 -70.01L-85.78 -70.04L-86.32 -70.15L-86.50 -70.35L-86.40 -70.47L-87.84 -70.25L-88.85 -70.52L-89.46 -71.06L-87.14 -71.01L-89.84 -71.49L-90.02 -71.95L-89.66 -72.17L-89.86 -72.25L-89.86 -72.41L-89.36 -72.80L-89.23 -73.11L-87.72 -73.72L-85.11 -73.81L-84.97 -73.69L-86.00 -73.31L-86.67 -72.76L-86.32 -72.46L-86.22 -71.90L-85.02 -71.35ZM-61.80 -49.09L-63.57 -49.40L-64.44 -49.83L-64.24 -49.94L-62.86 -49.71L-61.82 -49.28L-61.70 -49.14ZM-63.81 -46.47L-62.16 -46.49L-62.02 -46.42L-62.53 -46.20L-62.53 -45.98L-63.02 -46.07L-62.89 -46.12L-63.00 -46.29L-63.28 -46.15L-64.11 -46.42L-64.14 -46.60L-64.40 -46.69L-63.99 -47.06L-64.09 -46.78ZM-82.00 -62.96L-82.12 -62.65L-83.02 -62.21L-83.73 -62.26L-83.90 -62.48L-83.38 -62.90ZM-79.54 -62.41L-79.29 -62.25L-79.32 -62.03L-79.71 -61.61L-80.01 -61.70L-80.26 -61.82L-80.24 -62.15L-79.93 -62.39ZM-75.67 -68.32L-75.08 -68.17L-75.20 -67.46L-75.78 -67.28L-76.86 -67.24L-77.31 -67.69L-77.13 -67.95L-76.60 -68.28ZM-79.54 -73.65L-77.21 -73.50L-76.09 -72.88L-79.32 -72.76L-79.94 -72.86L-80.18 -73.23L-80.82 -73.38L-80.76 -73.76ZM-80.73 -52.75L-81.84 -52.96L-82.04 -53.05L-81.95 -53.13L-81.14 -53.21ZM-78.94 -56.27L-79.17 -55.88L-79.18 -56.21L-79.45 -55.90L-79.76 -55.81L-79.49 -56.12L-80.00 -55.93L-79.48 -56.40L-79.46 -56.21L-79.27 -56.60ZM-89.83 -77.27L-90.99 -77.33L-91.18 -77.48L-91.02 -77.64L-89.84 -77.49L-89.69 -77.38ZM-104.56 -77.14L-105.55 -77.35L-106.07 -77.72L-105.59 -77.74L-104.54 -77.34ZM-98.79 -79.98L-98.88 -79.72L-100.06 -79.90L-100.08 -80.08L-99.80 -80.14ZM-105.29 -72.92L-106.95 -73.51L-106.61 -73.70L-105.51 -73.77L-104.55 -73.54L-104.62 -73.31ZM-102.23 -76.02L-102.01 -75.94L-102.94 -75.76L-103.32 -75.77L-103.04 -75.92L-103.20 -75.96L-103.99 -75.93L-103.80 -76.04L-104.24 -76.05L-104.35 -76.18L-103.10 -76.31L-102.58 -76.28ZM-104.02 -76.58L-103.03 -76.43L-104.27 -76.33L-104.59 -76.61ZM-118.33 -75.58L-119.39 -75.62L-118.38 -75.96L-117.50 -76.08ZM-113.83 -77.75L-114.98 -77.92L-114.30 -78.06L-113.62 -77.83ZM-129.85 -53.17L-130.52 -53.54L-130.45 -53.63L-129.95 -53.44L-129.75 -53.25ZM-128.55 -52.94L-128.51 -52.52L-128.68 -52.29L-128.75 -52.76L-129.02 -52.76L-129.19 -52.99L-129.03 -53.28ZM-68.23 -60.24L-68.37 -60.31L-68.09 -60.59L-67.82 -60.45ZM-70.34 -62.55L-70.77 -62.60L-71.22 -62.87L-70.44 -62.73ZM-64.83 -61.37L-65.39 -61.56L-65.33 -61.67L-64.67 -61.59ZM-79.06 -75.93L-79.54 -75.83L-79.70 -75.88L-79.55 -75.96L-79.01 -76.15L-78.85 -76.11ZM-73.62 -67.78L-74.57 -67.83L-74.73 -68.05L-74.38 -68.09L-73.46 -67.99L-73.41 -67.79ZM-77.88 -63.47L-77.53 -63.27L-77.79 -63.13L-78.54 -63.42ZM-94.53 -75.75L-94.79 -75.79L-94.84 -75.95L-94.50 -75.99L-94.30 -75.79ZM-98.27 -73.87L-99.30 -73.86L-98.97 -73.99L-97.70 -74.11ZM-74.88 -68.35L-75.40 -68.53L-75.07 -68.68L-74.82 -68.49ZM-76.68 -63.39L-77.36 -63.59L-77.13 -63.68L-76.65 -63.50ZM-79.43 -69.79L-79.55 -69.63L-80.05 -69.63L-79.98 -69.51L-80.45 -69.65L-80.79 -69.69L-80.42 -69.80ZM-79.21 -68.85L-79.39 -68.94L-78.65 -69.35L-78.23 -69.30ZM-77.00 -69.14L-77.38 -69.27L-77.19 -69.44L-76.67 -69.37ZM-83.72 -65.80L-83.23 -65.72L-83.33 -65.63L-83.79 -65.77L-84.12 -65.77L-84.41 -66.13L-83.79 -65.97ZM-86.60 -67.74L-86.89 -67.84L-86.89 -68.19L-86.70 -68.31L-86.42 -68.18L-86.40 -67.89ZM-84.67 -65.57L-85.10 -65.76L-85.18 -65.97L-84.92 -66.00L-84.60 -65.66ZM-101.23 -76.58L-101.61 -76.61L-100.96 -76.73L-100.27 -76.73ZM-101.69 -77.70L-102.46 -77.77L-102.45 -77.88L-101.92 -77.90L-101.02 -77.76ZM-89.73 -76.51L-90.56 -76.73L-90.14 -76.84L-89.70 -76.74L-89.82 -76.63ZM-96.08 -75.51L-96.86 -75.37L-97.02 -75.47L-96.37 -75.65ZM-113.56 -76.74L-114.75 -76.76L-114.42 -76.88L-113.71 -76.87ZM-104.12 -75.04L-104.89 -75.15L-104.47 -75.41L-104.08 -75.42L-103.64 -75.16ZM-95.51 -69.57L-95.38 -69.47L-95.58 -69.34L-95.81 -69.56L-95.89 -69.35L-95.99 -69.47L-95.87 -69.61Z"/>
+    <path class="map-lake" d="M-112.52 -41.34L-112.50 -40.98L-112.81 -40.98L-112.83 -41.21L-113.08 -41.28L-113.10 -41.64L-112.79 -41.70L-112.81 -41.53ZM-112.19 -41.20L-111.94 -40.98L-112.50 -40.98L-112.48 -41.21L-112.26 -41.53L-112.26 -41.41L-112.05 -41.41ZM-90.06 -47.81L-90.00 -46.68L-90.92 -46.58L-90.75 -46.97L-91.82 -46.69L-92.09 -46.74L-90.88 -47.56ZM-87.85 -48.92L-87.28 -48.76L-86.40 -48.77L-85.91 -47.98L-84.86 -47.96L-85.02 -47.59L-84.57 -47.31L-84.81 -46.97L-84.39 -46.92L-84.51 -46.83L-84.46 -46.43L-85.03 -46.49L-84.99 -46.78L-86.15 -46.67L-86.62 -46.41L-86.64 -46.56L-86.84 -46.43L-87.40 -46.50L-87.67 -46.82L-87.89 -46.91L-88.20 -46.97L-88.48 -46.74L-88.24 -47.20L-87.71 -47.43L-88.07 -47.48L-89.21 -46.90L-90.00 -46.69L-90.00 -47.83L-89.32 -48.11L-89.17 -48.47L-88.73 -48.56L-88.92 -48.31L-88.76 -48.34L-88.50 -48.86L-88.31 -48.76L-88.55 -48.41L-88.33 -48.65L-87.76 -48.83L-87.61 -48.75L-87.65 -48.85L-87.94 -48.86L-88.11 -48.73L-88.24 -48.85ZM-78.82 -43.87L-78.75 -43.33L-79.34 -43.18L-79.88 -43.26L-79.46 -43.64ZM-80.20 -45.34L-80.07 -45.18L-79.80 -45.15L-80.09 -45.07L-79.66 -44.75L-80.11 -44.83L-79.97 -44.65L-80.09 -44.47L-80.68 -44.73L-80.95 -44.58L-80.97 -44.96L-81.27 -45.00L-81.29 -45.24L-81.74 -45.22L-81.37 -45.00L-81.26 -44.68L-81.75 -44.09L-81.74 -43.31L-82.18 -43.05L-82.47 -43.07L-82.74 -43.99L-83.02 -44.06L-83.67 -43.59L-83.95 -43.71L-83.87 -43.96L-83.34 -44.34L-83.39 -45.27L-84.29 -45.66L-84.97 -45.77L-85.12 -45.55L-84.92 -45.40L-85.40 -45.21L-85.30 -44.80L-85.43 -44.91L-85.65 -44.76L-85.53 -45.21L-86.24 -44.72L-86.09 -44.65L-86.26 -44.66L-86.18 -44.37L-86.50 -44.09L-86.54 -43.61L-86.19 -42.84L-86.34 -42.26L-86.88 -41.73L-87.19 -41.62L-87.53 -41.71L-87.83 -42.28L-87.92 -43.25L-87.47 -44.56L-86.96 -45.27L-87.93 -44.52L-87.84 -44.93L-87.63 -44.98L-87.00 -45.92L-86.97 -45.67L-86.53 -45.89L-86.70 -45.59L-86.28 -45.95L-85.65 -45.97L-85.42 -46.10L-84.90 -46.01L-84.73 -45.84L-84.64 -46.06L-83.94 -45.96L-83.76 -46.30L-82.79 -46.19L-82.84 -46.32L-82.57 -46.12L-82.44 -46.22L-82.31 -46.09L-81.87 -46.08L-81.87 -46.19L-81.76 -46.07L-82.00 -46.01L-81.83 -45.97L-81.67 -46.06L-80.77 -45.95ZM-81.87 -45.92L-82.18 -45.84L-82.31 -45.95L-82.73 -45.95L-82.56 -45.77L-82.84 -46.00L-83.23 -45.87L-81.87 -45.51L-81.58 -45.77L-81.69 -45.90L-81.81 -45.71ZM-80.09 -42.16L-81.39 -41.74L-81.74 -41.49L-83.01 -41.42L-82.72 -41.53L-83.46 -41.67L-83.19 -42.07L-82.62 -42.05L-82.53 -41.92L-82.40 -42.12L-81.30 -42.66L-80.51 -42.57L-80.20 -42.79L-78.88 -42.89L-79.15 -42.56ZM-76.09 -44.28L-76.36 -44.12L-76.10 -43.96L-76.31 -43.87L-76.21 -43.55L-76.82 -43.28L-78.75 -43.33L-78.75 -43.88L-77.61 -44.05L-77.12 -43.85L-76.77 -44.18L-76.46 -44.25L-76.42 -44.11L-76.20 -44.21L-76.38 -44.26ZM-115.21 -55.53L-114.92 -55.53L-114.77 -55.30L-116.10 -55.45ZM-104.68 -55.30L-104.66 -55.18L-104.41 -55.27L-104.37 -55.17L-104.71 -55.18L-105.12 -54.88L-105.32 -55.08L-105.12 -55.24ZM-100.59 -53.51L-100.42 -53.47L-100.28 -53.64L-100.00 -53.54L-99.89 -53.19L-99.76 -53.32L-99.57 -53.20L-99.40 -53.37L-99.40 -53.04L-99.62 -53.20L-99.85 -53.07L-100.32 -53.13L-100.93 -53.45ZM-100.59 -53.19L-99.65 -52.88L-99.67 -52.38L-99.87 -52.24L-99.80 -51.73L-99.65 -51.86L-99.76 -51.56L-100.00 -52.05L-100.05 -51.73L-100.23 -52.21L-100.02 -52.82L-100.28 -52.90L-100.37 -52.65L-100.40 -52.96L-100.76 -52.99L-100.68 -52.75L-101.04 -52.88L-101.10 -53.12L-100.68 -53.08ZM-99.46 -51.81L-99.23 -51.62L-99.20 -51.75L-99.05 -51.69L-98.92 -51.31L-99.05 -51.65L-98.83 -51.71L-98.81 -51.39L-98.55 -51.26L-98.66 -51.09L-98.88 -51.07L-98.86 -51.26L-99.07 -51.26L-99.32 -51.64L-99.58 -51.51ZM-97.56 -53.25L-96.90 -51.85L-96.33 -51.29L-96.64 -51.18L-96.28 -51.26L-96.46 -51.08L-96.33 -50.63L-96.59 -50.67L-96.56 -50.41L-96.88 -50.30L-96.97 -51.04L-96.65 -51.34L-97.01 -51.21L-96.72 -51.60L-96.96 -51.73L-97.27 -51.43L-97.36 -52.05L-97.56 -51.91L-97.51 -52.13L-97.73 -52.16L-97.78 -51.88L-97.93 -51.89L-98.93 -52.91L-98.41 -53.04L-99.03 -53.03L-99.27 -53.19L-98.96 -53.86L-97.87 -53.69L-98.32 -53.98L-98.19 -54.09L-98.04 -53.90L-97.73 -54.05L-97.98 -53.85ZM-98.50 -50.88L-98.00 -50.30L-98.44 -50.13L-99.01 -51.16L-98.75 -50.89ZM-94.79 -49.42L-94.88 -49.38L-94.50 -49.27L-94.77 -49.18L-94.57 -49.01L-94.39 -49.29L-94.11 -49.15L-94.61 -48.94L-95.32 -48.94L-95.26 -49.15L-94.95 -49.21L-95.12 -49.35L-94.71 -49.55ZM-88.07 -49.94L-88.14 -49.38L-88.33 -49.47L-88.42 -49.34L-88.55 -49.57L-88.53 -49.44L-88.77 -49.41L-88.59 -49.61L-88.98 -49.47L-89.05 -49.55L-88.89 -49.61L-89.10 -49.84L-88.77 -49.92L-88.96 -50.04L-88.68 -50.28L-88.27 -50.12L-88.44 -50.29L-88.20 -50.23L-88.26 -49.98ZM-72.35 -55.25L-72.33 -55.10L-72.95 -54.90L-73.54 -55.03ZM-72.42 -54.30L-72.54 -54.39L-72.33 -54.47L-71.70 -54.52L-72.16 -54.16L-72.26 -54.29L-72.60 -54.15L-72.85 -54.26ZM-69.04 -54.78L-68.95 -54.42L-69.22 -54.39L-69.21 -54.55L-69.88 -54.72L-69.59 -54.35L-69.92 -54.42L-69.63 -54.27L-69.83 -54.17L-69.48 -54.06L-69.87 -53.92L-69.87 -54.10L-69.92 -54.33L-70.18 -54.06L-70.05 -54.29L-70.22 -54.32L-70.22 -54.44L-70.31 -54.33L-70.58 -54.40L-69.99 -54.44L-70.21 -54.72L-69.86 -54.84ZM-75.23 -53.71L-75.21 -53.62L-75.59 -53.64L-75.41 -53.74L-76.04 -53.70L-75.56 -53.92L-75.06 -53.94L-74.95 -53.81L-74.44 -53.99L-74.28 -53.90ZM-76.16 -54.09L-76.31 -54.09L-76.16 -54.06L-76.41 -53.90L-76.57 -53.98L-76.33 -53.85L-76.76 -53.72L-76.25 -53.75L-76.49 -53.64L-76.16 -53.60L-76.66 -53.52L-76.77 -53.61L-77.38 -53.49L-77.58 -53.77L-77.12 -53.76L-76.52 -54.03L-76.85 -54.11L-76.29 -54.11L-76.33 -54.25ZM-68.67 -50.99L-68.73 -50.86L-68.76 -51.12L-69.13 -51.31L-68.77 -51.14L-68.42 -51.23L-68.58 -51.48L-68.42 -51.34L-68.35 -51.51L-68.61 -51.65L-68.98 -51.56L-69.18 -51.29L-69.09 -51.75L-69.04 -51.60L-68.48 -51.78L-68.55 -51.67L-68.25 -51.56L-68.15 -51.29L-68.33 -51.12L-68.69 -51.11ZM-73.05 -51.37L-73.08 -51.28L-72.76 -51.32L-73.64 -50.82L-73.85 -50.43L-74.09 -50.45L-73.83 -51.01ZM-63.72 -54.09L-63.46 -53.89L-64.12 -53.80L-64.18 -54.11L-64.36 -54.01L-64.56 -54.06L-64.49 -53.93L-64.75 -53.88L-64.60 -53.83L-64.86 -53.88L-64.69 -53.80L-65.04 -53.88L-65.30 -53.75L-65.47 -53.96L-65.65 -53.91L-65.45 -54.01L-65.39 -53.96L-65.30 -54.26L-65.21 -54.10L-65.08 -54.19L-64.82 -54.07L-64.82 -54.19L-64.69 -54.06L-64.49 -54.11L-64.73 -54.12L-64.79 -54.32L-64.56 -54.36L-64.48 -54.21L-64.42 -54.77L-64.12 -54.27L-64.01 -54.37ZM-112.50 -61.52L-112.76 -61.39L-113.45 -61.44L-113.77 -61.00L-115.42 -60.83L-117.20 -61.07L-117.47 -61.22L-116.98 -61.11L-116.51 -61.33L-115.97 -61.17L-115.83 -61.29L-116.08 -61.38L-115.84 -61.40L-115.62 -61.61ZM-109.18 -59.60L-108.76 -59.50L-108.96 -59.39L-108.28 -59.50L-106.57 -59.25L-107.71 -59.34L-108.19 -59.15L-109.34 -59.16L-110.21 -58.91L-110.39 -58.60L-111.19 -58.70L-109.73 -59.52ZM-112.10 -58.71L-111.83 -58.75L-111.80 -58.37L-112.15 -58.34L-112.49 -58.68L-112.17 -58.84ZM-103.05 -58.22L-102.86 -58.19L-103.25 -58.11L-103.32 -57.93L-103.45 -58.16L-103.47 -58.01L-103.71 -58.00L-103.49 -58.03L-103.61 -58.44L-102.92 -58.56L-102.76 -58.40ZM-106.22 -57.59L-106.13 -57.38L-107.20 -57.35L-106.30 -57.71L-106.08 -57.68ZM-101.87 -57.54L-102.12 -57.48L-101.82 -57.25L-102.06 -57.20L-102.00 -57.05L-102.22 -57.09L-102.28 -56.92L-102.09 -56.90L-102.44 -56.78L-102.26 -56.74L-102.50 -56.70L-102.39 -56.60L-103.27 -56.33L-103.31 -56.61L-103.14 -56.52L-103.03 -56.70L-103.10 -56.47L-102.54 -56.78L-102.83 -57.38L-101.98 -58.14L-102.08 -57.98L-101.80 -58.12L-101.90 -57.87L-101.60 -57.93L-101.51 -57.82ZM-108.46 -55.79L-109.10 -55.97L-109.12 -56.15L-108.63 -56.00L-108.63 -55.82L-108.43 -56.12L-108.15 -56.13ZM-99.45 -60.22L-99.80 -60.26L-99.81 -60.61L-99.54 -60.49L-99.36 -60.69L-99.25 -60.52L-99.57 -60.31L-99.27 -60.36L-99.10 -60.09ZM-99.36 -57.02L-99.18 -56.92L-99.05 -57.04L-98.96 -56.89L-98.67 -57.16L-98.33 -57.14L-98.70 -57.23L-98.47 -57.26L-98.63 -57.53L-98.17 -57.68L-98.39 -57.50L-98.13 -57.34L-98.23 -57.11L-98.61 -57.06L-98.80 -56.82L-99.10 -56.90L-99.23 -56.72L-99.57 -56.73ZM-74.75 -56.32L-74.31 -56.32L-74.34 -56.15L-73.96 -56.15L-73.91 -56.00L-74.82 -56.10ZM-123.82 -66.37L-123.75 -66.12L-124.64 -66.14L-124.85 -65.92L-124.99 -66.30L-124.50 -66.24ZM-112.81 -66.50L-112.74 -66.36L-112.84 -66.07L-112.97 -66.00L-113.61 -66.27L-113.01 -66.28L-112.93 -66.05L-112.92 -66.30L-113.39 -66.48ZM-123.18 -66.51L-120.41 -66.50L-120.47 -66.37L-119.62 -66.30L-117.82 -66.50L-117.91 -66.40L-117.46 -66.44L-117.95 -66.36L-117.60 -66.23L-118.48 -65.66L-119.73 -65.78L-119.58 -65.70L-120.12 -65.62L-119.49 -65.32L-119.93 -65.34L-121.20 -64.80L-121.53 -64.87L-121.33 -64.96L-120.57 -65.26L-120.41 -65.57L-121.53 -65.40L-121.60 -65.07L-122.06 -64.93L-123.52 -65.13L-122.87 -65.25L-122.96 -65.48L-122.15 -65.78L-122.81 -65.96L-121.51 -65.92L-121.23 -66.05L-122.08 -66.25L-123.05 -66.25L-123.12 -66.04L-123.25 -66.16L-123.75 -66.12L-123.75 -66.39ZM-118.09 -63.57L-117.25 -63.13L-117.75 -63.09L-118.12 -63.30L-118.70 -63.33ZM-114.43 -62.39L-114.30 -62.50L-114.28 -62.29L-113.42 -62.00L-112.50 -62.08L-112.79 -61.92L-112.52 -61.90L-113.01 -61.71L-112.66 -61.61L-115.62 -61.61L-115.53 -61.76L-114.83 -61.76L-114.64 -61.94L-115.34 -62.23L-115.25 -62.47L-115.84 -62.53L-115.97 -62.82L-115.80 -62.64L-115.27 -62.61L-114.70 -62.34ZM-110.21 -65.43L-109.95 -65.30L-110.61 -65.43L-110.70 -65.66L-111.27 -65.83L-111.51 -65.77L-111.39 -66.02L-111.01 -65.76L-110.68 -65.82L-110.83 -65.71L-110.48 -65.68ZM-101.25 -63.47L-101.29 -62.63L-101.38 -62.95L-101.51 -62.69L-102.20 -63.17ZM-109.16 -62.65L-110.65 -62.84L-111.53 -62.62L-110.43 -62.96L-108.94 -62.81ZM-110.39 -62.50L-110.79 -62.53L-110.48 -62.50L-111.31 -62.30L-111.65 -62.12L-111.42 -62.06L-112.24 -61.62L-112.46 -61.61L-112.26 -61.79L-112.46 -61.70L-112.50 -61.79L-111.93 -61.97L-112.10 -62.03L-112.50 -61.88L-112.03 -62.10L-112.48 -62.08L-111.53 -62.61L-111.62 -62.37L-111.31 -62.63L-109.72 -62.71L-109.86 -62.51ZM-95.49 -64.01L-96.19 -64.28L-95.36 -64.30L-94.18 -64.05L-94.29 -63.94L-94.97 -64.12ZM-101.05 -63.39L-101.12 -63.05L-100.81 -63.01L-101.25 -62.68L-101.23 -63.47L-101.08 -63.39L-100.72 -63.59L-100.70 -63.31ZM-97.34 -62.43L-97.91 -62.43L-98.53 -62.82L-97.73 -62.83L-97.65 -62.97ZM-70.53 -66.50L-70.05 -66.50L-69.79 -66.34L-69.70 -66.50L-69.35 -66.46L-69.13 -66.39L-69.48 -66.45L-69.55 -66.36L-69.28 -66.34L-69.74 -66.14L-69.87 -66.28L-70.31 -66.15L-70.58 -66.33L-71.30 -65.93L-71.03 -66.05L-71.29 -66.09L-71.28 -66.50ZM-71.77 -65.40L-70.71 -65.05L-70.40 -64.56L-70.81 -64.62L-70.58 -64.70L-70.80 -64.80L-71.17 -64.63L-71.84 -64.66L-72.04 -64.92L-71.76 -64.80L-71.39 -64.89ZM-122.96 -66.51L-119.82 -67.04L-119.21 -66.93L-120.34 -66.51ZM-106.14 -69.49L-104.24 -69.46L-104.77 -69.31L-106.26 -69.39ZM-70.75 -66.91L-70.31 -66.67L-69.36 -66.55L-69.96 -66.52L-71.31 -66.51L-71.15 -66.96Z"/>
+  </svg>
+</div>
+<div class="page-cities" id="cities"></div>
+<div class="app">
+  <span class="rail-line" aria-hidden="true"></span>
+  <header class="top">
+    <div class="brand">
+      <span class="eyebrow" id="eyebrow">Daybook</span>
+      <h1 id="todayLbl"></h1>
+    </div>
+  </header>
+  <div id="notice" class="notice" hidden></div>
+  <div class="upper">
+  <div class="upper-main">
+  <div class="stage"><main id="board" class="board" data-layout="grid" aria-label="Team board"></main></div>
+  </div>
+    <aside class="rail" aria-label="Menu">
+      <div class="rail-group top">
+        <button class="rail-btn add" type="button" data-act="desk-toggle" id="addBtn" aria-pressed="false" aria-label="Add to Daybook">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 4h10l4 4v12H5z"/><path d="M15 4v4h4"/><path d="M12 11v6M9 14h6"/></svg>
+          <span>Add</span>
+        </button>
+      </div>
+      <div class="rail-group mid">
+      <button class="rail-btn" type="button" data-act="open-history">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/><path d="M12 7v5l3 2"/></svg>
+        <span>History</span>
+      </button>
+      <button class="rail-btn" type="button" data-act="open-settings">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/></svg>
+        <span>My view</span>
+      </button>
+      </div>
+      <div class="rail-group bottom">
+      <div class="trash" id="trash" role="img" aria-label="Trash. Drop a note here to delete it.">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <g class="lid"><path d="M3.5 6.5h17"/><path d="M9 6.5V4.5h6v2"/></g>
+          <path d="M5.5 6.5l1 13.5h11l1-13.5"/><path d="M10 10.5v6M14 10.5v6"/>
+        </svg>
+      </div>
+      </div>
+    </aside>
+  </div>
+  <div class="desk" id="desk">
+    <button type="button" class="desk-close" data-act="desk-close" aria-label="Close desk">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+    </button>
+    <section id="panel" class="panel" aria-label="My desk"></section>
+  </div>
+</div>
+
+
+<div id="historyScrim" class="scrim" hidden data-act="scrim">
+  <section class="sheet" id="history" role="dialog" aria-modal="true" aria-labelledby="historyTitle"></section>
+</div>
+<div id="settingsScrim" class="scrim" hidden data-act="scrim">
+  <section class="sheet narrow" id="settings" role="dialog" aria-modal="true" aria-labelledby="settingsTitle"></section>
+</div>
+<div id="toast" class="toast" role="status" hidden></div>
+
+<script src="avatars.js"></script>
+<script>
+(() => {
+  const $ = (s) => document.querySelector(s);
+  const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  const LS = {
+    get(k, d) { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } },
+    set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} },
+  };
+  const rid = () => Math.random().toString(36).slice(2, 10);
+  const clone = (o) => JSON.parse(JSON.stringify(o));
+  const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+  const MY_TZ = (() => { try { return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC"; } catch (e) { return "UTC"; } })();
+  const HOST_THEME = document.documentElement.getAttribute("data-theme");
+
+  const SEATS = [["matt", "Matt"], ["robert", "Robert"], ["grace", "Grace"], ["daniel", "Daniel"]];
+  const SEAT_KEYS = SEATS.map(([k]) => k);
+  const SEAT_NAME = Object.fromEntries(SEATS);
+  const PAPERS = { yellow: "#fff1a1", pink: "#ffc8d8", blue: "#c4e2ff", green: "#cdeebd", orange: "#ffd4a3", lilac: "#e2d3ff" };
+  // Notes are square: 54px plus 13% of the area's height (so they grow gently on big screens), but never wider than 20% of the area.
+  const NOTE_W = 20;
+  const noteSide = (r) => Math.min((NOTE_W / 100) * r.width, 54 + .13 * r.height);
+  const noteWPct = (r) => (r && r.width ? (noteSide(r) / r.width) * 100 : 17);   // note width as % of the area's width
+  const noteHPct = (r) => (r && r.height ? (noteSide(r) / r.height) * 100 : 26);   // note height as % of the area's height
+  const MAX_NOTES = 60;
+  const AVATAR_BG = { sage: "#b9d7a8", sky: "#a9cdec", rose: "#f2b8c6", sun: "#f7d878", peach: "#f6c19c", lilac: "#cdbcf0", stone: "#c9c2b4", teal: "#8fcfc8" };
+  // Avatar options (DiceBear "thumbs" style). Values are the library's own option names.
+  const TH = {
+    color: ["69d2e7", "1c799f", "0a5b83", "7bc96f", "2f9e44", "f7d046", "f88c49", "e8590c", "f783ac", "c2255c", "b197fc", "6741d9", "adb5bd", "343a40"],
+    eyes: ["variant1", "variant2", "variant3", "variant4", "variant5", "variant6", "variant7", "variant8", "variant9"],
+    eyeSize: [["W10", "Small"], ["W12", "Medium"], ["W14", "Large"], ["W16", "Huge"]],
+    mouth: ["variant1", "variant2", "variant3", "variant4", "variant5"],
+    face: ["variant1", "variant2", "variant3", "variant4", "variant5"],
+    ink: [["000000", "Dark"], ["ffffff", "Light"]],
+    motion: [["sway", "Sway"], ["bounce", "Bounce"], ["still", "Still"]],
+  };
+  const TH_DEFAULT = { kind: "thumbs", color: "69d2e7", eyes: "variant3", eyeSize: "W12", mouth: "variant2", face: "variant1", ink: "000000", bg: "sage", motion: "sway" };
+  const AVATAR_EMOJI = ["🦊", "🐻", "🐼", "🐨", "🐯", "🦁", "🐸", "🐙", "🦉", "🐧", "🐳", "🦄", "🌵", "🌻", "🍄", "🌙", "⭐", "🔥", "⚡", "🌊", "☕", "🍩", "🎧", "🎨", "🚀", "🧩", "📚", "🛠️", "🎯", "🪴"];
+  // One-tap updates for days with nothing special to report.
+  const QUICK_UPDATES = [
+    ["Steady day", "Steady progress on my current work."],
+    ["Meetings & admin", "Mostly meetings, reviews and admin today."],
+    ["Research", "Mostly research, reading and planning today."],
+    ["Away", "Away today."],
+  ];
+
+  const ACCENTS = {
+    teal: ["#2d6a6f", "#7cc4c4"], indigo: ["#3d4fb8", "#a0abf2"], plum: ["#7a3b78", "#d79bd4"],
+    rust: ["#9a4a1c", "#eea27a"], olive: ["#56691f", "#b8d070"], slate: ["#3f5466", "#a7bccd"],
+  };
+  const DEFAULT_PREFS = { sound: true, map: false, accent: "teal", theme: "system", layout: "grid", size: "m", order: SEAT_KEYS.slice(), hidden: [], paper: "yellow" };
+
+  const S = {
+    db: null, user: null, myId: null, readOnly: false, ready: false,
+    members: [], subs: {}, days: {}, local: {},
+    prefs: (() => { const p = { ...DEFAULT_PREFS, ...LS.get("daybook.prefs", {}) }; p.hidden = (p.hidden || []).filter((k) => SEAT_NAME[k]); return p; })(),
+    drag: null, deskDrag: null, pendingRender: false, deskOpen: false, bounce: {}, bounceTimers: {}, seenAt: {},
+    updDraft: LS.get("daybook.updDraft", "") || "",
+    swapPick: null, confirmLeave: false, metaSyncing: false, settingsOpen: false,
+    history: { open: false, days: [], q: "", loading: false, selDate: null, token: 0, who: null },
+  };
+
+  /* ---------- dates ---------- */
+  function keyIn(tz) {
+    const d = new Date();
+    try { return new Intl.DateTimeFormat("en-CA", { timeZone: tz, year: "numeric", month: "2-digit", day: "2-digit" }).format(d); }
+    catch (e) { const p = (n) => String(n).padStart(2, "0"); return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`; }
+  }
+  const myToday = () => keyIn(MY_TZ);
+  const keyMs = (k) => Date.parse(k + "T00:00:00Z");
+  function fmtDay(k, withYear) {
+    const o = { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" };
+    if (withYear) o.year = "numeric";
+    return new Intl.DateTimeFormat("en-GB", o).format(new Date(keyMs(k)));
+  }
+  function isoWeek(k) {
+    const d = new Date(keyMs(k));
+    const day = (d.getUTCDay() + 6) % 7;
+    d.setUTCDate(d.getUTCDate() - day + 3);
+    const first = new Date(Date.UTC(d.getUTCFullYear(), 0, 4));
+    return 1 + Math.round(((d - first) / 864e5 - 3 + ((first.getUTCDay() + 6) % 7)) / 7);
+  }
+
+  const IC = {
+    heart: '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 21s-7.5-4.6-9.6-9.2C.9 8.4 3 4.5 6.7 4.5c2.1 0 3.6 1.2 4.3 2.6h2c.7-1.4 2.2-2.6 4.3-2.6 3.7 0 5.8 3.9 4.3 7.3C19.5 16.4 12 21 12 21z"/></svg>',
+    close: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>',
+    plus: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>',
+    flip: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9a8 8 0 0 1 14-3l2 2"/><path d="M20 4v4h-4"/><path d="M20 15a8 8 0 0 1-14 3l-2-2"/><path d="M4 20v-4h4"/></svg>',
+    grip: '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="9" cy="6" r="1.6"/><circle cx="15" cy="6" r="1.6"/><circle cx="9" cy="12" r="1.6"/><circle cx="15" cy="12" r="1.6"/><circle cx="9" cy="18" r="1.6"/><circle cx="15" cy="18" r="1.6"/></svg>',
+    enter: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 5v7a3 3 0 0 1-3 3H5"/><path d="M9 11l-4 4 4 4"/></svg>',
+    pencil: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16z"/></svg>',
+    bubble: '<svg class="upd-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z"/></svg>',
+  };
+
+  /* ---------- members ---------- */
+  // Members are ordered by joinedAt, so the first to pick a name holds it.
+  const holderOf = (key) => S.members.find((m) => m.seat === key) || null;
+  const team = () => SEAT_KEYS.map(holderOf).filter(Boolean);
+  const meMember = () => S.members.find((m) => m.id === S.myId);
+  // Hearts live on each person's own member doc as { noteId: time }, so everyone can only change their own.
+  const heartsOf = (m) => (m.id === S.myId && S.myHearts ? S.myHearts : m.hearts || {});
+  const heartCount = (id) => team().reduce((c, m) => c + (heartsOf(m)[id] ? 1 : 0), 0);
+  const iHeart = (id) => { const me = meMember(); return !!(me && heartsOf(me)[id]); };
+  let heartTimer, heartChain = Promise.resolve();
+  function showHeartWho(el) {
+    hideHeartWho();
+    const id = el.dataset.heart, who = team().filter((m) => heartsOf(m)[id] && SEAT_NAME[m.seat]);
+    if (!who.length) return;
+    const pop = document.createElement("div");
+    pop.className = "heart-who"; pop.id = "heartWho";
+    pop.innerHTML = who.map((m) => `<span>${badge(m.seat)}${esc(SEAT_NAME[m.seat])}</span>`).join("");
+    document.body.appendChild(pop);
+    const r = el.getBoundingClientRect(), pr = pop.getBoundingClientRect();
+    const left = Math.min(innerWidth - pr.width - 8, Math.max(8, r.left + r.width / 2 - pr.width / 2));
+    const top = r.top - pr.height - 8 >= 8 ? r.top - pr.height - 8 : r.bottom + 8;
+    pop.style.left = left + "px"; pop.style.top = top + "px";
+  }
+  function hideHeartWho() { const p = $("#heartWho"); if (p) p.remove(); }
+  document.addEventListener("pointerover", (ev) => { const h = ev.target.closest && ev.target.closest(".heart.has[data-heart]"); if (h) { if (!$("#heartWho") || S.heartWhoEl !== h) { showHeartWho(h); S.heartWhoEl = h; } } else if ($("#heartWho")) hideHeartWho(); });
+  document.addEventListener("pointerout", (ev) => { const h = ev.target.closest && ev.target.closest(".heart.has[data-heart]"); if (h && !h.contains(ev.relatedTarget)) hideHeartWho(); });
+  function toggleHeart(id, owner) {
+    const me = meMember();
+    if (!me || !canWrite() || !id) return;
+    const next = { ...heartsOf(me) };
+    if (next[id]) delete next[id];
+    else {
+      next[id] = Date.now();
+      const keys = Object.keys(next);
+      if (keys.length > 500) keys.sort((a, b) => next[a] - next[b]).slice(0, keys.length - 500).forEach((k) => delete next[k]);
+      SFX.heart();
+      if (owner) bounceSeat(owner, 700);
+      S.heartPop = id;
+      clearTimeout(S.heartPopTimer);
+      S.heartPopTimer = setTimeout(() => { S.heartPop = null; }, 400);
+    }
+    S.myHearts = next;
+    renderBoard();
+    const again = document.querySelector(`.heart[data-heart="${CSS.escape(id)}"]`);
+    if (again && again.matches(":hover") && again.classList.contains("has")) showHeartWho(again); else hideHeartWho();
+    clearTimeout(heartTimer);
+    heartTimer = setTimeout(() => {
+      const body = clone(S.myHearts);
+      heartChain = heartChain.then(() => S.db.doc(`people/${S.myId}`).update({ hearts: body })).then(() => { if (S.myHearts === body || JSON.stringify(S.myHearts) === JSON.stringify(body)) S.myHearts = null; }).catch(writeErr);
+    }, 400);
+  }
+  const mySeat = () => { const m = meMember(); return m && holderOf(m.seat) === m ? m.seat : null; };
+  // Avatars are animated "thumbs" characters each person builds; everyone sees them. Older emoji avatars still show.
+  const avCache = new Map();
+  let avSeq = 0;
+  function thumbOpts(a) {
+    const pick = (list, v, d) => (list.includes(v) ? v : d);
+    const size = TH.eyeSize.some(([k]) => k === a.eyeSize) ? a.eyeSize : TH_DEFAULT.eyeSize;
+    const ink = TH.ink.some(([k]) => k === a.ink) ? a.ink : TH_DEFAULT.ink;
+    return {
+      seed: "daybook", backgroundColor: [(AVATAR_BG[a.bg] || AVATAR_BG.sage).slice(1)],
+      shapeColor: [pick(TH.color, a.color, TH_DEFAULT.color)],
+      eyes: [pick(TH.eyes, a.eyes, TH_DEFAULT.eyes) + size], mouth: [pick(TH.mouth, a.mouth, TH_DEFAULT.mouth)], face: [pick(TH.face, a.face, TH_DEFAULT.face)],
+      eyesColor: [ink], mouthColor: [ink],
+      faceOffsetX: [0], faceOffsetY: [0], faceRotation: [0], shapeOffsetX: [0], shapeOffsetY: [0], shapeRotation: [0],
+    };
+  }
+  // Mark the body, face, eyes and mouth so CSS can move them, and give the mask a unique id per copy.
+  function rigSvg(svg) {
+    let out = svg.replace(/<metadata[\s\S]*?<\/metadata>/, "");
+    out = out.replace(/(<rect fill="[^"]*" width="100" height="100" x="0" y="0" \/>)/, '$1<g class="th-sway">');
+    out = out.replace(/<\/g><\/svg>$/, "</g></g></svg>");
+    out = out.replace(/<g transform="([^"]*)"><g transform=/, '<g transform="$1"><g class="th-face"><g transform=');
+    let n = 0;
+    out = out.replace(/(<g transform="[^"]*">)(<path[^>]*\/>)(<\/g>)/g, (m, o, path, cl) => `${o}<g class="${n++ === 0 ? "th-eyes" : "th-mouth"}">${path}</g>${cl}`);
+    out = out.replace(/(class="th-mouth">[\s\S]*?<\/g><\/g>)/, "$1</g>");
+    return out;
+  }
+  function thumbSvg(a) {
+    if (!window.DaybookAvatar) return "";
+    const o = thumbOpts(a);
+    const k = JSON.stringify(o);
+    if (!avCache.has(k)) { try { avCache.set(k, rigSvg(window.DaybookAvatar.render(o))); } catch (e) { avCache.set(k, ""); } }
+    const id = "m" + (++avSeq);
+    return avCache.get(k).replace(/viewboxMask/g, id);
+  }
+  // Each avatar gets its own timing so the four don't move in step.
+  // Each person starts at a different point and moves at a slightly different speed, so the four never line up.
+  const MOTION_TIMING = [
+    { d: 0, sway: 3.4, bounce: 1.62, blink: 4.3 },
+    { d: -1.3, sway: 3.95, bounce: 1.91, blink: 5.1 },
+    { d: -2.4, sway: 3.65, bounce: 1.77, blink: 4.7 },
+    { d: -0.7, sway: 4.25, bounce: 2.06, blink: 5.6 },
+  ];
+  function motionStyle(seed) {
+    let i = SEAT_KEYS.indexOf(seed);
+    if (i < 0) { let h = 0; for (const ch of String(seed)) h = (h * 31 + ch.charCodeAt(0)) % 997; i = h % MOTION_TIMING.length; }
+    const t = MOTION_TIMING[i];
+    // Start each animation as if it had been running since the page opened, so an avatar that is
+    // redrawn (for example when the board refreshes after a drop) carries on smoothly instead of restarting.
+    const since = (performance.now() / 1000).toFixed(3);
+    return `--d:${(t.d - since).toFixed(3)}s;--sway:${t.sway}s;--bounce:${t.bounce}s;--blink:${t.blink}s`;
+  }
+  function avatarHTML(a, opts = {}) {
+    const svg = thumbSvg(a);
+    if (!svg) return "";
+    const seat = SEAT_NAME[opts.seed] ? opts.seed : "";
+    const motion = opts.still ? "still" : seat && (S.bounce[seat] || 0) > Date.now() ? "bounce" : "sway";
+    return `<span class="av av-th mo-${motion} ${opts.cls || ""}" ${seat ? `data-av="${seat}"` : ""} style="${motionStyle(opts.seed || "")}" aria-hidden="true">${svg}</span>`;
+  }
+  // Avatars sway; while someone is doing something (dragging, pinning, posting) theirs bounces for a moment.
+  function bounceSeat(seat, ms = 1600) {
+    if (!seat) return;
+    const until = Date.now() + ms;
+    if ((S.bounce[seat] || 0) >= until - 150) return;
+    S.bounce[seat] = until;
+    document.querySelectorAll(`.av-th[data-av="${seat}"]`).forEach((el) => { el.classList.remove("mo-sway"); el.classList.add("mo-bounce"); });
+    clearTimeout(S.bounceTimers[seat]);
+    S.bounceTimers[seat] = setTimeout(() => {
+      if ((S.bounce[seat] || 0) > Date.now()) return;
+      document.querySelectorAll(`.av-th[data-av="${seat}"]`).forEach((el) => { el.classList.remove("mo-bounce"); el.classList.add("mo-sway"); });
+    }, ms + 20);
+  }
+  function badge(key) {
+    const m = holderOf(key);
+    const a = (m && m.avatar) || {};
+    if (a.kind === "thumbs") { const h = avatarHTML(a, { seed: key }); if (h) return h; }
+    const emoji = AVATAR_EMOJI.includes(a.emoji) ? a.emoji : "";
+    const bg = AVATAR_BG[a.bg];
+    const cls = ["av", bg ? "custom" : "", emoji ? "emoji" : ""].join(" ");
+    return `<span class="${cls}" ${bg ? `style="--av:${bg}"` : ""} aria-hidden="true">${esc(emoji || (SEAT_NAME[key] || "?")[0])}</span>`;
+  }
+  const myAvatar = () => { const a = (meMember() || {}).avatar; return a && a.kind === "thumbs" ? { ...TH_DEFAULT, ...a } : { ...TH_DEFAULT }; };
+  let avatarTimer = null, avatarChain = Promise.resolve();
+  function setAvatar(patch) {
+    const me = meMember();
+    if (!me || !canWrite()) return;
+    const next = { ...myAvatar(), ...patch, kind: "thumbs" };
+    me.avatar = next;
+    renderBoard(); renderSettings();
+    refreshPanel();
+    clearTimeout(avatarTimer);
+    avatarTimer = setTimeout(() => {
+      const body = clone(next);
+      avatarChain = avatarChain.then(() => S.db.doc(`people/${S.myId}`).update({ avatar: body })).catch(writeErr);
+    }, 500);
+  }
+  const BATCH = 8;
+  function randomAvatar() {
+    const r = (list) => list[Math.floor(Math.random() * list.length)];
+    return {
+      kind: "thumbs", color: r(TH.color), eyes: r(TH.eyes), eyeSize: r(TH.eyeSize)[0], mouth: r(TH.mouth), face: r(TH.face),
+      ink: Math.random() < .8 ? "000000" : "ffffff", bg: r(Object.keys(AVATAR_BG)),
+    };
+  }
+  const newBatch = () => { S.avBatch = Array.from({ length: BATCH }, randomAvatar); };
+  // Pick from a small random batch; New batch deals a fresh set.
+  function avatarBuilderHTML() {
+    const a = myAvatar();
+    if (!S.avBatch) newBatch();
+    const same = (x) => ["color", "eyes", "eyeSize", "mouth", "face", "ink", "bg"].every((k) => x[k] === a[k]);
+    return `<div class="av-builder">
+      <div class="av-top">${avatarHTML(a, { seed: "preview", cls: "av-big" })}<div class="who"><strong>${esc(SEAT_NAME[mySeat()])}</strong></div></div>
+      <div class="pick-grid" role="group" aria-label="Avatar choices">${S.avBatch.map((c, i) => `<button type="button" data-act="av-pick" data-i="${i}" aria-pressed="${same(c)}" aria-label="Avatar choice ${i + 1}">${avatarHTML({ ...c, motion: a.motion }, { seed: "pick" + i, cls: "pick-av" })}</button>`).join("")}</div>
+      <div><button class="btn small" type="button" data-act="av-batch">${IC.flip} New batch</button></div>
+    </div>`;
+  }
+  const canWrite = () => !!(S.db && S.myId && !S.readOnly && mySeat());
+  function viewOrder() {
+    const o = Array.isArray(S.prefs.order) ? S.prefs.order : [];
+    return o.length === SEAT_KEYS.length && SEAT_KEYS.every((k) => o.includes(k)) ? o.slice() : SEAT_KEYS.slice();
+  }
+  function myTodayDoc() {
+    const k = myToday();
+    const snap = (S.days[S.myId] || []).find((d) => d.date === k);
+    const loc = S.local[k];
+    if (loc && (!snap || (loc.updatedAt || 0) >= (snap.updatedAt || 0))) return loc;
+    return snap || null;
+  }
+  const notesOf = (d) => (d && Array.isArray(d.notes) ? d.notes : []);
+  // A note stays on its owner's desk until it is pinned to the board.
+  const placed = (n) => typeof n.x === "number" && typeof n.y === "number";
+
+  /* ---------- rendering helpers ---------- */
+  function keepFocus(fn) {
+    const a = document.activeElement;
+    const id = a && a.id;
+    let v, s, e;
+    if (id && "value" in a) { v = a.value; s = a.selectionStart; e = a.selectionEnd; }
+    fn();
+    if (id) {
+      const n = document.getElementById(id);
+      if (n && n !== a) {
+        if (v !== undefined) n.value = v;
+        n.focus({ preventScroll: true });
+        try { n.setSelectionRange(s, e); } catch (_) {}
+      }
+    }
+  }
+  function renderTop() {
+    const k = myToday();
+    $("#todayLbl").textContent = new Intl.DateTimeFormat("en-GB", { weekday: "long", day: "numeric", month: "long", timeZone: "UTC" }).format(new Date(keyMs(k)));
+    $("#eyebrow").textContent = `Daybook · Week ${isoWeek(k)}`;
+  }
+  function showNotice(t) { const n = $("#notice"); n.textContent = t || ""; n.hidden = !t; }
+  let toastTimer;
+  function toast(msg, action) {
+    const t = $("#toast");
+    t.innerHTML = `<span>${esc(msg)}</span>${action ? `<button type="button" id="toastAct">${esc(action.label)}</button>` : ""}`;
+    t.hidden = false;
+    if (action) $("#toastAct").onclick = () => { t.hidden = true; action.run(); };
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => { t.hidden = true; }, action ? 7000 : 3000);
+  }
+
+  /* ---------- the public board ---------- */
+  function noteHTML(n, opts = {}) {
+    const paper = PAPERS[n.color] || PAPERS.yellow;
+    const style = `left:min(${n.x}%, 100% - var(--nw));top:${n.y}%;z-index:${n.z || 1};--rot:${n.rot || 0}deg;--paper:${paper}`;
+    const cls = ["note", opts.own ? "own" : "", opts.dim ? "dim" : ""].join(" ");
+    const body = opts.mark ? opts.mark(n.text || "") : esc(n.text || "");
+    const count = heartCount(n.id), mine = !opts.own && iHeart(n.id);
+    // Hearts: teammates can tap one on anyone else's note; on my own notes, and in History, the count just shows.
+    const heart = opts.react && !opts.own
+      ? `<span class="heart${count ? " has" : ""}${mine ? " on" : ""}${S.heartPop === n.id ? " pop" : ""}" role="button" tabindex="0" data-act="heart" data-note="${esc(n.id)}" data-heart="${esc(n.id)}" aria-pressed="${mine}" aria-label="Heart this note${count ? ` (${count})` : ""}">${IC.heart}${count ? `<b>${count}</b>` : ""}</span>`
+      : count ? `<span class="heart has static" data-heart="${esc(n.id)}" aria-label="${count} ${count === 1 ? "heart" : "hearts"}">${IC.heart}<b>${count}</b></span>` : "";
+    if (opts.own) return `<button type="button" class="${cls}" data-note="${esc(n.id)}" style="${style}" aria-label="Your note: ${esc(n.text || "empty")}. Drag or use arrow keys to move it. Enter takes it back to your desk.">${body}${heart}</button>`;
+    return `<div class="${cls}" style="${style}">${body}${heart}</div>`;
+  }
+  function corkHTML(notes, opts = {}) {
+    let inner = notes.map((n) => noteHTML(n, { own: opts.own, react: opts.react, mark: opts.mark, dim: opts.match ? !opts.match(n) : false })).join("");
+    if (opts.hint) inner += `<div class="cork-hint">${opts.hint}</div>`;
+    return `<div class="cork" ${opts.label ? `role="group" aria-label="${esc(opts.label)}"` : ""}>${inner}</div>`;
+  }
+  function nameTagHTML(key, opts = {}) {
+    const name = SEAT_NAME[key];
+    const upd = (opts.update || "").trim();
+    const you = "";
+    if (!upd) return `<span class="name-tag">${badge(key)}<span class="name">${esc(name)}${you}</span></span>`;
+    const peek = key === mySeat() && Date.now() < (S.bubbleUntil || 0) ? " peek" : "";
+    return `<span class="name-tag has-update${peek}" tabindex="0" aria-label="${esc(name)}'s message. Focus to read it.">${badge(key)}<span class="name">${esc(name)}${you}</span>${IC.bubble}
+      <span class="upd-pop" role="tooltip"><p>${esc(upd)}</p></span></span>`;
+  }
+  // Notes read top to bottom, then left to right, like scanning a board.
+  const boardOrder = (notes) => notes.slice().sort((a, b) => Math.round(a.y / 12) - Math.round(b.y / 12) || a.x - b.x);
+  function pieceHTML(key, front, cls = "") {
+    return `<section class="quad ${cls}" data-key="${key}" aria-label="${esc(SEAT_NAME[key])}'s area">
+      <div class="flipper"><div class="face front">${front}</div></div></section>`;
+  }
+  function quadHTML(key) {
+    const m = holderOf(key);
+    const name = SEAT_NAME[key];
+    if (!m) {
+      return pieceHTML(key, `<div class="q-head">${nameTagHTML(key)}</div>${corkHTML([])}`);
+    }
+    const isMe = m.id === S.myId;
+    const days = S.days[m.id];
+    const doc = isMe ? (myTodayDoc() || (days && days[0])) : days && days[0];
+    const notes = notesOf(doc).filter(placed);
+    const own = isMe && canWrite() && doc && doc.date === myToday();
+    let hint = "";
+    if (days === undefined && !isMe) hint = "<span>Loading…</span>";
+    return pieceHTML(key,
+      `<div class="q-head">${nameTagHTML(key, { isMe, update: doc && doc.update, date: doc && doc.date })}</div>
+       ${corkHTML(notes, { own, react: canWrite() && !!mySeat(), hint, label: `${name}'s notes` })}`,
+      isMe ? "mine" : "");
+  }
+  function renderBoard() {
+    renderTop();
+    if (S.drag) { S.pendingRender = true; return; }
+    const board = $("#board");
+    board.dataset.layout = S.prefs.layout;
+    const mine = mySeat();
+    const keys = viewOrder().filter((k) => k === mine || !S.prefs.hidden.includes(k));
+    if (!S.ready || !S.db) {
+      board.innerHTML = keys.map((k) => `<section class="quad"><div class="flipper"><div class="face front"><div class="q-head">${nameTagHTML(k)}</div>${corkHTML([], { hint: S.ready ? "<span>Open this page on claude.ai, signed in, to see the board</span>" : "<span>Loading…</span>" })}</div></div></section>`).join("");
+      return;
+    }
+    keepFocus(() => { board.innerHTML = keys.map(quadHTML).join(""); });
+    queueFit();
+    const notes = [];
+    if (S.readOnly && S.myId) notes.push("You can look at the board, but you can't post. Ask the owner to share this page with you as a Contributor.");
+    const hiddenCount = SEAT_KEYS.length - keys.length;
+    if (hiddenCount) notes.push(`${hiddenCount} ${hiddenCount > 1 ? "areas are" : "area is"} hidden in your view. Change it in My view.`);
+    showNotice(notes.join(" "));
+  }
+
+  /* ---------- my desk ---------- */
+  const panelBusy = () => { const a = document.activeElement; return !!(a && $("#panel").contains(a) && (a.tagName === "TEXTAREA" || a.tagName === "INPUT")); };
+  function cardHTML(n) {
+    return `<div class="card" data-card="${esc(n.id)}" style="--paper:${PAPERS[n.color] || PAPERS.yellow}">
+      <div class="card-grip" data-grip="${esc(n.id)}">${IC.grip}<span class="grow"></span></div>
+      <textarea id="card-${esc(n.id)}" data-card-text="${esc(n.id)}" maxlength="400" aria-label="Note text">${esc(n.text || "")}</textarea>
+      <div class="card-tools">${Object.entries(PAPERS).map(([k, c]) => `<button type="button" class="dot" data-act="card-color" data-id="${esc(n.id)}" data-color="${k}" style="--paper:${c}" aria-label="Make it ${k}" aria-pressed="${n.color === k}"></button>`).join("")}
+        <button type="button" class="txt del-x" data-act="card-delete" data-id="${esc(n.id)}" aria-label="Remove note">${IC.close}</button></div>
+    </div>`;
+  }
+  function renderPanel() {
+    const P = $("#panel");
+    if (!S.ready) { P.className = "panel single"; P.innerHTML = `<p class="muted" style="margin:0">Loading your desk…</p>`; return; }
+    if (!S.db) { P.className = "panel single"; P.innerHTML = `<h2>Your desk</h2><p class="muted" style="margin:0">Open this page on claude.ai while signed in to write your own notes.</p>`; return; }
+    if (!S.myId) { P.className = "panel single"; P.innerHTML = `<h2>Your desk</h2><p class="muted" style="margin:0">Sign in on claude.ai to write your own notes.</p>`; return; }
+    if (S.readOnly) { P.className = "panel single"; P.innerHTML = `<h2>Your desk</h2><p class="muted" style="margin:0">You can look at the board, but you can't post. Ask the owner to share this page with you as a Contributor.</p>`; return; }
+    if (!mySeat()) {
+      const open = SEAT_KEYS.filter((k) => !holderOf(k));
+      const clash = meMember();
+      P.className = "panel single";
+      P.innerHTML = clash
+        ? `<h2>That name is taken</h2><p class="muted" style="margin:0">Someone else already joined as ${esc(SEAT_NAME[clash.seat] || "that person")}. Leave, then pick your name again.</p><div class="who-row"><button class="btn" type="button" data-act="leave-yes">Leave and pick again</button></div>`
+        : open.length
+          ? `<h2>Who are you?</h2><p class="muted" style="margin:0">Pick your name once. Then you can pin notes and post your messages here.</p>
+             <div class="who-row">${open.map((k) => `<button class="btn primary" type="button" data-act="join" data-seat="${k}">I'm ${esc(SEAT_NAME[k])}</button>`).join("")}</div>`
+          : `<h2>Everyone has joined</h2><p class="muted" style="margin:0">All four names are taken, so you can read along.</p>`;
+      return;
+    }
+    const today = myTodayDoc();
+    const all = notesOf(today);
+    const notes = all.filter((n) => !placed(n));
+    const posted = postedLines(today);
+    P.className = "panel";
+    keepFocus(() => {
+      P.innerHTML = `<div class="desk-col">
+          <div class="desk-col-head"><button type="button" class="av-btn" data-act="open-settings" aria-label="Change your avatar">${badge(mySeat())}</button><label class="lbl" for="in-update">Message</label><span class="grow"></span>${posted.length ? `<button type="button" class="mini-btn" data-act="posted-toggle" aria-pressed="${!!S.editPosted}" aria-label="Edit posted messages">${IC.pencil}<span>${posted.length}</span></button>` : ""}</div>
+          ${S.editPosted && posted.length ? `<ol class="posted" aria-label="Posted today">${posted.map((l, i) => `<li><input class="field" id="posted-${i}" data-posted="${i}" maxlength="500" value="${esc(l)}" aria-label="Posted line ${i + 1}"><button type="button" class="mini-btn" data-act="posted-del" data-i="${i}" aria-label="Remove line ${i + 1}">${IC.close}</button></li>`).join("")}</ol>` : ""}
+          <div class="upd-box"><textarea id="in-update" class="field" maxlength="1500" aria-label="Message">${esc(S.updDraft || "")}</textarea><button type="button" class="upd-send" data-act="upd-submit" aria-label="Post message">${IC.enter}</button></div>
+          <div class="quick" role="group" aria-label="Quick messages">${QUICK_UPDATES.map(([l, t], i) => `<button type="button" data-act="quick" data-i="${i}">${esc(l)}</button>`).join("")}</div>
+        </div>
+        <div class="desk-col">
+          <div class="desk-col-head"><span class="lbl">My notes</span>
+            <button class="btn small primary" type="button" data-act="add-note">${IC.plus} New note</button>
+            <button class="btn small" type="button" data-act="list-open" aria-expanded="${!!S.listOpen}">From a list</button>
+            ${all.length > notes.length ? `<button class="btn small" type="button" data-act="unpin-all">Take all back</button>` : ""}
+            ${notes.length ? `<button class="btn small" type="button" data-act="post-all">Post all</button>` : ""}</div>
+          ${S.listOpen ? `<div class="list-box">
+            <label class="lbl" for="in-list">One note per line</label>
+            <textarea id="in-list" class="field" rows="4">${esc(S.listDraft || "")}</textarea>
+            <div class="list-actions"><button class="btn small primary" type="button" data-act="list-make" id="list-make">${listLabel(S.listDraft || "")}</button>
+              <button class="btn small" type="button" data-act="list-cancel">Cancel</button></div>
+          </div>` : `<div class="note-row" id="note-row">${notes.map(cardHTML).join("") ||
+            `<div class="empty"></div>`}</div>`}
+        </div>`;
+    });
+    queueFit();
+  }
+  function renderAll() { renderBoard(); renderPanel(); }
+
+  /* ---------- sounds: small, soft effects made with Web Audio (no files) ---------- */
+  const SFX = (() => {
+    let ctx = null, noiseBuf = null, lastRiffle = 0;
+    const enabled = () => S.prefs.sound !== false;
+    function ac() {
+      if (!enabled()) return null;
+      try {
+        if (!ctx) { const C = window.AudioContext || window.webkitAudioContext; if (!C) return null; ctx = new C(); }
+        if (ctx.state === "suspended") ctx.resume();
+        return ctx;
+      } catch (e) { return null; }
+    }
+    function env(c, g, at, vol, attack, dur) {
+      g.gain.setValueAtTime(0.0001, at);
+      g.gain.exponentialRampToValueAtTime(vol, at + attack);
+      g.gain.exponentialRampToValueAtTime(0.0001, at + dur);
+    }
+    function tone(o) {
+      const c = ac(); if (!c) return;
+      const at = c.currentTime + (o.at || 0), dur = o.t || .12;
+      const osc = c.createOscillator(), g = c.createGain();
+      osc.type = o.type || "sine";
+      osc.frequency.setValueAtTime(o.f || 440, at);
+      if (o.f2) osc.frequency.exponentialRampToValueAtTime(o.f2, at + dur);
+      env(c, g, at, o.vol || .1, o.attack || .005, dur);
+      osc.connect(g).connect(c.destination);
+      osc.start(at); osc.stop(at + dur + .02);
+    }
+    function noise(o) {
+      const c = ac(); if (!c) return;
+      if (!noiseBuf) { noiseBuf = c.createBuffer(1, c.sampleRate, c.sampleRate); const d = noiseBuf.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1; }
+      const at = c.currentTime + (o.at || 0), dur = o.t || .1;
+      const src = c.createBufferSource(), hp = c.createBiquadFilter(), lp = c.createBiquadFilter(), g = c.createGain();
+      src.buffer = noiseBuf;
+      hp.type = "highpass"; hp.frequency.setValueAtTime(o.hp || 400, at);
+      lp.type = "lowpass"; lp.frequency.setValueAtTime(o.lp || 6000, at);
+      if (o.lp2) lp.frequency.exponentialRampToValueAtTime(o.lp2, at + dur);
+      env(c, g, at, o.vol || .08, o.attack || .004, dur);
+      src.connect(hp).connect(lp).connect(g).connect(c.destination);
+      src.start(at, Math.random() * .5); src.stop(at + dur + .02);
+    }
+    return {
+      // A pin pressed into cork: a bright prick, then a soft thump.
+      pin(at = 0) { tone({ f: 1500, f2: 700, type: "triangle", t: .04, vol: .07, at }); tone({ f: 190, f2: 85, t: .11, vol: .22, at: at + .012 }); noise({ t: .03, hp: 1800, vol: .04, at }); },
+      pins(n) { for (let i = 0; i < Math.min(n, 8); i++) this.pin(i * .075); },
+      // Paper scrunched into the bin, then the lid taps shut.
+      trash() {
+        for (let i = 0; i < 4; i++) noise({ t: .05 + Math.random() * .03, hp: 500 + Math.random() * 900, lp: 4500, vol: .09, at: i * .035 });
+        tone({ f: 880, f2: 820, type: "triangle", t: .07, vol: .045, at: .17 });
+        tone({ f: 150, f2: 90, t: .12, vol: .16, at: .17 });
+      },
+      // A note slid off the board back onto the desk.
+      unpin() { noise({ t: .16, hp: 1200, lp: 5000, lp2: 1500, vol: .05 }); tone({ f: 520, f2: 880, t: .07, vol: .05, at: .05 }); },
+      // A fresh note peeled off the pad.
+      peel() { noise({ t: .09, hp: 2200, lp: 7000, lp2: 3000, vol: .05 }); tone({ f: 660, f2: 1040, t: .06, vol: .04, at: .03 }); },
+      pops(n) { for (let i = 0; i < Math.min(n, 8); i++) tone({ f: 520 + i * 70, f2: 760 + i * 70, t: .06, vol: .07, at: i * .065 }); },
+      // A message posted: a short, light thud.
+      thud() { tone({ f: 200, f2: 110, t: .1, vol: .16 }); noise({ t: .03, hp: 200, lp: 1200, vol: .05 }); },
+      whoosh(up) { noise({ t: .32, hp: 300, lp: up ? 900 : 3200, lp2: up ? 3200 : 700, vol: .05, attack: .08 }); },
+      // A card flicked past in the history drawer (never more than one every 45 ms).
+      riffle() { const now = performance.now(); if (now - lastRiffle < 45) return; lastRiffle = now; noise({ t: .025, hp: 3000, lp: 9000, vol: .035 }); },
+      boop() { tone({ f: 520, f2: 780, t: .09, vol: .07 }); },
+      // A note lifted off the board or desk: a quick rising "thwip".
+      // A small, warm two-note pop for a heart.
+      heart() { tone({ f: 660, f2: 990, t: .08, vol: .07 }); tone({ f: 1320, t: .12, vol: .04, at: .06 }); },
+      thwip() { tone({ f: 260, f2: 1500, t: .07, vol: .06 }); noise({ t: .05, hp: 2400, lp: 8000, vol: .035 }); },
+      tick() { tone({ f: 1200, t: .03, vol: .035, type: "triangle" }); },
+    };
+  })();
+  // Redrawing the desk while you type or mid-click would swap the box or button out from under you
+  // (and swallow the click), so a redraw that arrives then waits until you're done.
+  function refreshPanel() {
+    if (panelBusy() || S.ptrDown || S.deskDrag) { S.panelDirty = true; return; }
+    S.panelDirty = false;
+    renderPanel();
+  }
+  function flushPanel() { if (S.panelDirty) refreshPanel(); }
+  document.addEventListener("pointerdown", () => { S.ptrDown = true; }, true);
+  const ptrUp = () => setTimeout(() => { S.ptrDown = false; flushPanel(); }, 0);
+  document.addEventListener("pointerup", ptrUp, true);
+  document.addEventListener("pointercancel", ptrUp, true);
+
+  /* ---------- outside: sky, moon and season, worked out on this device ---------- */
+  const SOUTH_TZ = /^(Australia|Antarctica)\/|^Pacific\/(Auckland|Chatham|Fiji|Tongatapu|Apia|Noumea|Efate)|^America\/(Argentina|Sao_Paulo|Santiago|Montevideo|Asuncion|La_Paz|Lima|Bahia|Belem|Fortaleza|Recife|Maceio|Cuiaba|Campo_Grande|Porto_Velho|Rio_Branco|Punta_Arenas)|^Africa\/(Johannesburg|Maputo|Harare|Lusaka|Windhoek|Gaborone|Maseru|Mbabane|Blantyre|Lubumbashi|Luanda|Dar_es_Salaam)|^Indian\/(Mauritius|Reunion|Antananarivo)/;
+  const southern = SOUTH_TZ.test(MY_TZ);
+  function moonPhase(at = Date.now()) {
+    const synodic = 29.530588853, ref = Date.UTC(2000, 0, 6, 18, 14);
+    return ((((at - ref) / 864e5) % synodic) + synodic) % synodic / synodic;   // 0 new, .5 full
+  }
+  function moonName(f) {
+    const names = ["New moon", "Waxing crescent", "First quarter", "Waxing gibbous", "Full moon", "Waning gibbous", "Last quarter", "Waning crescent"];
+    return names[Math.round(f * 8) % 8];
+  }
+  function moonSvg(f) {
+    // Lit part of the disc: a half circle plus an ellipse whose width follows the phase.
+    const k = Math.cos(f * 2 * Math.PI), waxing = f < .5, rx = Math.abs(k) * 8;
+    const lit = "#fdf6d8", dark = "#3a4466";
+    const half = waxing ? "M8 0 A8 8 0 0 1 8 16 Z" : "M8 0 A8 8 0 0 0 8 16 Z";
+    const ell = `<ellipse cx="8" cy="8" rx="${rx.toFixed(2)}" ry="8" fill="${k > 0 ? dark : lit}"/>`;
+    return `<svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="8" fill="${dark}"/><path d="${half}" fill="${lit}"/>${ell}</svg>`;
+  }
+  function seasonName(d = new Date()) {
+    let m = d.getMonth();
+    if (southern) m = (m + 6) % 12;
+    const season = ["Winter", "Winter", "Spring", "Spring", "Spring", "Summer", "Summer", "Summer", "Autumn", "Autumn", "Autumn", "Winter"][m];
+    const part = { 11: "Early", 0: "Mid", 1: "Late", 2: "Early", 3: "Mid", 4: "Late", 5: "Early", 6: "Mid", 7: "Late", 8: "Early", 9: "Mid", 10: "Late" }[m];
+    return `${part} ${season.toLowerCase()}`;
+  }
+  // Where each person is. Sunrise, sunset and the sky's colour come from the sun's real position there.
+  const CITY = {
+    matt: { city: "Waterloo", lat: 43.4643, lon: -80.5204 },
+    robert: { city: "Orillia", lat: 44.6082, lon: -79.4197 },
+    grace: { city: "Moncton", lat: 46.0878, lon: -64.7782 },
+    daniel: { city: "Calgary", lat: 51.0447, lon: -114.0719 },
+  };
+  // Sun's height above the horizon in degrees (standard low-precision solar position; within a couple of minutes for sunrise and sunset).
+  function sunElevation(lat, lon, ms) {
+    const rad = Math.PI / 180, n = ms / 864e5 + 2440587.5 - 2451545.0;
+    const L = (280.460 + 0.9856474 * n) % 360, g = ((357.528 + 0.9856003 * n) % 360) * rad;
+    const lambda = (L + 1.915 * Math.sin(g) + 0.020 * Math.sin(2 * g)) * rad, eps = (23.439 - 0.0000004 * n) * rad;
+    const dec = Math.asin(Math.sin(eps) * Math.sin(lambda));
+    const ra = Math.atan2(Math.cos(eps) * Math.sin(lambda), Math.cos(lambda));
+    const gmst = (18.697374558 + 24.06570982441908 * n) % 24;
+    const ha = (gmst * 15 + lon) * rad - ra;
+    return Math.asin(Math.sin(lat * rad) * Math.sin(dec) + Math.cos(lat * rad) * Math.cos(dec) * Math.cos(ha)) / rad;
+  }
+  // Sunrise, solar noon and sunset nearest a moment (cached per place and hour).
+  const sunCache = new Map();
+  function sunDay(lat, lon, ms) {
+    const key = `${lat},${lon},${Math.floor(ms / 36e5)}`;
+    if (sunCache.has(key)) return sunCache.get(key);
+    let noon = ms, best = -99;
+    const day0 = ms - 12 * 36e5;
+    for (let t = day0; t < day0 + 24 * 36e5; t += 6e5) { const e = sunElevation(lat, lon, t); if (e > best) { best = e; noon = t; } }
+    const cross = (a, b, rising) => { for (let k = 0; k < 30; k++) { const m = (a + b) / 2; if ((sunElevation(lat, lon, m) > -0.833) === rising) b = m; else a = m; } return (a + b) / 2; };
+    const out = { rise: cross(noon - 12 * 36e5, noon, true), set: cross(noon, noon + 12 * 36e5, false), noon, peak: best };
+    if (sunCache.size > 200) sunCache.clear();
+    sunCache.set(key, out);
+    return out;
+  }
+  // Sky colours by the sun's height; mornings lean pink and gold, evenings lean orange.
+  const SKY_STOPS = [
+    [-90, "#070d22", "#111a3d", "#111a3d"], [-18, "#0a1128", "#1a2550", "#1a2550"], [-12, "#101a42", "#283a74", "#283a74"],
+    [-6, "#1f2f68", "#5b6aa8", "#5a5f9e"], [-3, "#33468a", "#c98aa0", "#c9787a"], [0, "#4e6fb2", "#f2b08a", "#f0935f"],
+    [3, "#6493d1", "#f8cf9c", "#f7b36f"], [8, "#73abe3", "#d9e9f2", "#f6dcae"], [20, "#5ea5e6", "#bfe1f7", "#c4e2f6"], [90, "#3f8fdc", "#a5d2f3", "#a5d2f3"],
+  ];
+  const hexMix = (a, b, t) => {
+    const pa = parseInt(a.slice(1), 16), pb = parseInt(b.slice(1), 16);
+    const ch = (sh) => Math.round(((pa >> sh) & 255) * (1 - t) + ((pb >> sh) & 255) * t);
+    return "#" + ((1 << 24) | (ch(16) << 16) | (ch(8) << 8) | ch(0)).toString(16).slice(1);
+  };
+  function skyAt(place, ms) {
+    const e = sunElevation(place.lat, place.lon, ms);
+    const day = sunDay(place.lat, place.lon, ms);
+    const morning = ms < day.noon;
+    let k = 0;
+    while (k < SKY_STOPS.length - 2 && e > SKY_STOPS[k + 1][0]) k++;
+    const [e0, t0, m0, v0] = SKY_STOPS[k], [e1, t1, m1, v1] = SKY_STOPS[k + 1];
+    const f = clamp((e - e0) / (e1 - e0), 0, 1);
+    const top = hexMix(t0, t1, f), bottom = morning ? hexMix(m0, m1, f) : hexMix(v0, v1, f);
+    const dark = clamp((-e - 2) / 12, 0, 1);   // 0 in daylight, 1 deep into night
+    const hill = hexMix("#a6c895", "#16211b", dark);
+    // Across the window: the sun travels sunrise to sunset; the moon crosses the night.
+    let x, y, up = e > -1.5;
+    if (up) { const fr = clamp((ms - day.rise) / (day.set - day.rise), 0, 1); x = 8 + fr * 84; y = 80 - clamp(e / Math.max(day.peak, 10), 0, 1) * 62; }
+    else { const prevSet = day.set > ms ? day.set - 864e5 : day.set, nextRise = day.rise > ms ? day.rise : day.rise + 864e5; const fr = clamp((ms - prevSet) / (nextRise - prevSet), 0, 1); x = 8 + fr * 84; y = 74 - Math.sin(fr * Math.PI) * 50; }
+    let label;
+    if (e > 6) label = ms < day.noon - 2 * 36e5 ? "morning" : ms > day.noon + 3 * 36e5 ? "late afternoon" : ms > day.noon + 36e5 ? "afternoon" : "midday";
+    else if (e > -0.833) label = morning ? "sunrise" : "sunset";
+    else if (e > -6) label = morning ? "dawn" : "dusk";
+    else if (e > -12) label = morning ? "first light" : "twilight";
+    else label = "night";
+    return { e, top, bottom, hill, dark, up, x, y, label, sunWarm: clamp((8 - e) / 10, 0, 1) };
+  }
+  function skyHTML(place, ms, opts = {}) {
+    const k = skyAt(place, ms);
+    let html = "";
+    const stars = opts.mini ? 5 : 16;
+    if (k.dark > .15) {
+      const seeded = (i) => { const v = Math.sin(i * 91.7 + 3.1) * 43758.5; return v - Math.floor(v); };
+      for (let i = 0; i < stars; i++) html += `<span class="star" style="left:${(seeded(i) * 100).toFixed(1)}%;top:${(seeded(i + 40) * 62).toFixed(1)}%;opacity:${(k.dark * (.5 + seeded(i + 9) * .5)).toFixed(2)};animation-delay:${(seeded(i + 80) * 3).toFixed(2)}s"></span>`;
+    }
+    if (k.up) html += `<span class="orb sun" style="left:${k.x.toFixed(1)}%;top:${k.y.toFixed(1)}%;--warm:${k.sunWarm.toFixed(2)}"></span>`;
+    else if (k.dark > .3) html += `<span class="orb moon" style="left:${k.x.toFixed(1)}%;top:${k.y.toFixed(1)}%;opacity:${Math.min(1, k.dark + .2).toFixed(2)}">${moonSvg(moonPhase(ms))}</span>`;
+    if (!opts.mini && k.e > 2) html += `<span class="cloud" style="width:34px;top:9px;--drift:70s;animation-delay:-20s"></span><span class="cloud" style="width:22px;top:21px;--drift:95s;animation-delay:-62s;opacity:.7"></span>`;
+    html += `<span class="hill"></span>`;
+    return { html, style: `--sky:linear-gradient(180deg, ${k.top} 0%, ${k.bottom} 100%);--hill:${k.hill}`, label: k.label };
+  }
+  // Canada's longitudes span the page width; latitudes are scaled so the four windows fill the band given by mapBand().
+  const MAP_WEST = -141, MAP_EAST = -52;
+  // The empty band below the board when the desk is closed (on small screens, the bottom of the screen).
+  function mapBand() {
+    const H = innerHeight;
+    if (S.closedBottom && matchMedia("(min-width: 721px) and (min-height: 560px)").matches) return [S.closedBottom, H];
+    return [H - 96, H];
+  }
+  function mapGeometry() {
+    const W = innerWidth, H = innerHeight, [b0, b1] = mapBand();
+    const lats = SEAT_KEYS.map((k) => CITY[k].lat), hi = Math.max(...lats), lo = Math.min(...lats);
+    const half = innerWidth <= 720 ? 14 : 18, pad = 10;
+    const y0 = b0 + half + pad, y1 = Math.max(y0 + 8, b1 - half - pad);
+    const k = (y1 - y0) / (hi - lo);                // pixels per degree of latitude
+    const north = hi + y0 / k;                      // latitude at the top of the page
+    return { W, H, k, north, x: (lon) => ((lon - MAP_WEST) / (MAP_EAST - MAP_WEST)) * W, y: (lat) => (north - lat) * k };
+  }
+  function renderOutside() {
+    const box = $("#cities"), svg = $("#mapSvg");
+    if (!box || !svg) return;
+    const g = mapGeometry(), now = Date.now(), narrow = innerWidth <= 720;
+    svg.setAttribute("viewBox", `${MAP_WEST} ${(-g.north).toFixed(3)} ${MAP_EAST - MAP_WEST} ${(g.H / g.k).toFixed(3)}`);
+    const pos = {};
+    for (const key of SEAT_KEYS) pos[key] = { x: g.x(CITY[key].lon), y: g.y(CITY[key].lat) };
+    // Waterloo and Orillia are close together: push their windows apart along the shorter axis, leaving a small gap.
+    const a = pos.matt, b = pos.robert, w = narrow ? 22 : 30, h = narrow ? 27 : 36, gap = 4;
+    const dx = b.x - a.x, dy = b.y - a.y, needX = w + gap - Math.abs(dx), needY = h + gap - Math.abs(dy);
+    if (needX > 0 && needY > 0) {
+      if (needX <= needY) { const m = needX / 2 * (dx < 0 ? -1 : 1); a.x -= m; b.x += m; }
+      else { const m = needY / 2 * (dy < 0 ? -1 : 1); a.y -= m; b.y += m; }
+    }
+    box.innerHTML = SEAT_KEYS.map((key) => {
+      const c = CITY[key], at = pos[key], k = skyHTML(c, now, { mini: narrow });
+      return `<div class="window" style="left:${at.x.toFixed(1)}px;top:${at.y.toFixed(1)}px" role="img" aria-label="${esc(SEAT_NAME[key])} in ${esc(c.city)}: ${k.label}"><span class="sky" style="${k.style}">${k.html}</span></div>`;
+    }).join("");
+  }
+  addEventListener("resize", () => { clearTimeout(S.mapTimer); S.mapTimer = setTimeout(renderOutside, 150); });
+  renderOutside();
+  setInterval(renderOutside, 5 * 60 * 1000);
+  function applyDesk() {
+    const app = $(".app"), desk = $("#desk");
+    app.classList.toggle("desk-closed", !S.deskOpen);
+    desk.inert = !S.deskOpen;
+    $("#addBtn")?.setAttribute("aria-pressed", String(S.deskOpen));
+    measureDesk();
+    queueFit();
+  }
+  // With the desk closed, slide the board so its centre sits at the middle of the screen,
+  // and put the Add to Daybook button halfway down the space left below it.
+  function measureDesk() {
+    const app = $(".app"), board = $("#board");
+    if (!board) return;
+    // Measure where the board sits at rest; the slide itself (a transform) doesn't change offsetTop.
+    const upper = $(".upper");
+    const ur = upper.getBoundingClientRect(), r = board.getBoundingClientRect();
+    const top = app.getBoundingClientRect().top + upper.offsetTop + (r.top - ur.top), bottom = top + r.height;
+    const next = 18;   // closed: a slightly larger gap above the board
+    app.style.setProperty("--shift", next + "px");
+    const deskEl = $("#desk");
+    if (deskEl && deskEl.offsetHeight) app.style.setProperty("--desk-h", deskEl.offsetHeight + "px");
+    const closedBottom = Math.round(bottom + next);
+    if (closedBottom !== S.closedBottom) { S.closedBottom = closedBottom; renderOutside(); }
+  }
+  if (window.ResizeObserver) new ResizeObserver(measureDesk).observe(document.querySelector(".upper"));
+  addEventListener("resize", measureDesk);
+
+  // Note text grows to fill its square: short notes get big writing, long ones shrink to fit.
+  const noteScale = () => ({ s: .88, l: 1.15 }[S.prefs.size] || 1);
+  // Words are kept whole while fitting; a word is split only if it can't fit even at the smallest size.
+  function fitText(el, maxPx, minPx = 9) {
+    if (!el || !el.clientWidth) return;
+    el.style.overflowWrap = "normal"; el.style.wordBreak = "normal";
+    const fits = () => el.scrollHeight <= el.clientHeight + 1 && el.scrollWidth <= el.clientWidth + 1;
+    let lo = minPx, hi = Math.max(minPx, maxPx);
+    el.style.fontSize = hi + "px";
+    if (!fits()) {
+      for (let i = 0; i < 8; i++) {
+        const mid = (lo + hi) / 2;
+        el.style.fontSize = mid + "px";
+        if (fits()) lo = mid; else hi = mid;
+      }
+      el.style.fontSize = lo + "px";
+    }
+    if (!fits()) el.style.overflowWrap = "anywhere";
+  }
+  const fitNote = (el) => fitText(el, el.clientWidth * .26 * noteScale());
+  const fitCard = (ta) => fitText(ta, ta.closest(".card").clientWidth * .2 * noteScale(), 10);
+  function fitAll() {
+    document.querySelectorAll("#board .note").forEach(fitNote);
+    document.querySelectorAll(".card textarea").forEach(fitCard);
+  }
+  let fitQueued = false;
+  function queueFit() {
+    if (fitQueued) return;
+    fitQueued = true;
+    requestAnimationFrame(() => { fitQueued = false; fitAll(); });
+  }
+  if (window.ResizeObserver) new ResizeObserver(queueFit).observe(document.querySelector(".app"));
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(queueFit);
+
+  /* ---------- prefs ---------- */
+  function applyPrefs() {
+    Object.assign(S.prefs, { theme: "system", layout: "grid", size: "m", hidden: [] });  // no longer adjustable
+    const p = S.prefs;
+    const acc = ACCENTS[p.accent] || ACCENTS.teal;
+    const root = document.documentElement;
+    root.style.setProperty("--acc-light", acc[0]);
+    root.style.setProperty("--acc-dark", acc[1]);
+    if (p.theme === "light" || p.theme === "dark") root.setAttribute("data-theme", p.theme);
+    else if (HOST_THEME) root.setAttribute("data-theme", HOST_THEME);
+    else root.removeAttribute("data-theme");
+    document.body.dataset.size = p.size;
+    document.body.classList.toggle("show-map", !!p.map);
+  }
+  let prefTimer, prefChain = Promise.resolve();
+  function savePrefs() {
+    LS.set("daybook.prefs", S.prefs);
+    if (!S.db || !S.myId) return;
+    clearTimeout(prefTimer);
+    prefTimer = setTimeout(() => {
+      const body = clone(S.prefs);
+      prefChain = prefChain.then(() => S.db.doc(`data/users/${S.myId}/prefs`).set(body)).catch(() => {});
+    }, 600);
+  }
+  function setPref(k, v) {
+    S.prefs = { ...S.prefs, [k]: v };
+    applyPrefs(); savePrefs(); renderBoard(); renderSettings();
+  }
+
+  /* ---------- data: subscriptions ---------- */
+  function onMembers(snap) {
+    S.members = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+    S.ready = true;
+    syncSubs(); syncMemberMeta(); renderBoard();
+    refreshPanel();
+    if (S.history.open) renderHistory();
+    renderSettings();
+  }
+  function syncSubs() {
+    const want = new Set(team().map((m) => m.id));
+    for (const id of Object.keys(S.subs)) if (!want.has(id)) { S.subs[id](); delete S.subs[id]; delete S.days[id]; }
+    for (const id of want) {
+      if (S.subs[id]) continue;
+      S.subs[id] = S.db.collection(`people/${id}/days`).orderBy("date", "desc").limit(2).onSnapshot(
+        (snap) => {
+          S.days[id] = snap.docs.map((d) => d.data());
+          const latest = Math.max(0, ...S.days[id].map((d) => d.updatedAt || 0)), m = S.members.find((x) => x.id === id);
+          if (id !== S.myId && S.seenAt[id] !== undefined && latest > S.seenAt[id] && m) bounceSeat(m.seat, 1800);
+          S.seenAt[id] = latest;
+          renderBoard();
+          if (id === S.myId) { refreshPanel(); carryOver(); }
+        },
+        () => { S.days[id] = []; renderBoard(); }
+      );
+    }
+  }
+  async function syncMemberMeta() {
+    const me = meMember();
+    if (!me || S.metaSyncing || S.readOnly || me.tz === MY_TZ) return;
+    S.metaSyncing = true;
+    try { await S.db.doc(`people/${S.myId}`).update({ tz: MY_TZ }); } catch (e) {}
+    S.metaSyncing = false;
+  }
+
+  /* ---------- data: writes ---------- */
+  let chain = Promise.resolve(), flushTimer = null;
+  function writeErr(e) {
+    const code = e && e.code;
+    if (code === "invalid_argument") { S.readOnly = true; toast("You can look but not post. Ask the owner for Contributor access."); renderAll(); }
+    else if (code === "quota_exceeded") toast("The board's storage is full, so this didn't save. Ask the owner to clear old boards.");
+    else toast("Couldn't save just now. Check your connection, then try again.");
+  }
+  // Changes show at once; writes to the store are coalesced into one per short pause.
+  // A new day starts from where the last one ended: pinned notes stay where they were, the rest wait on the desk.
+  // The message starts fresh. The previous day stays in History as it was.
+  function carryOver() {
+    const k = myToday(), days = S.days[S.myId];
+    if (!canWrite() || !mySeat() || !days || myTodayDoc() || S.carried === k) return;
+    const prev = days.find((d) => d.date < k);
+    if (!prev || !notesOf(prev).length) return;
+    S.carried = k;
+    saveDay((d) => { d.notes = clone(notesOf(prev)); }, { panel: true, quiet: true });
+  }
+  function saveDay(mut, opts = {}) {
+    if (!canWrite()) return;
+    const k = myToday();
+    const cur = myTodayDoc();
+    const base = cur ? clone(cur) : { date: k, notes: [], update: "" };
+    base.notes = notesOf(base);
+    mut(base);
+    base.date = k; base.tz = MY_TZ; base.updatedAt = Date.now();
+    const mc = myCork(), mr = mc && mc.getBoundingClientRect();
+    if (mr && mr.width && mr.height) base.aspect = +(mr.width / mr.height).toFixed(3);
+    S.local[k] = base;
+    if (!opts.quiet) bounceSeat(mySeat());
+    renderBoard();
+    if (opts.panel) renderPanel();
+    clearTimeout(flushTimer);
+    flushTimer = setTimeout(() => flush(k), opts.delay ?? 300);
+  }
+  function flush(k) {
+    clearTimeout(flushTimer); flushTimer = null;
+    const body = S.local[k];
+    if (!body || !S.db) return;
+    const snapshot = clone(body);
+    chain = chain.then(() => S.db.doc(`people/${S.myId}/days/${k}`).set(snapshot)).catch(writeErr);
+  }
+  document.addEventListener("visibilitychange", () => { if (document.hidden && flushTimer) flush(myToday()); });
+  const topZ = () => notesOf(myTodayDoc()).reduce((z, n) => Math.max(z, n.z || 0), 0) + 1;
+
+  function freeSpot() {
+    const notes = notesOf(myTodayDoc()).filter(placed), nw = myNoteW(), nh = myNoteH();
+    const pick = () => [3 + Math.random() * (94 - nw), 12 + Math.random() * (84 - nh)];
+    for (let tries = 0; tries < 40; tries++) {
+      const [x, y] = pick();
+      if (!notes.some((n) => Math.abs(n.x - x) < nw * .8 && Math.abs(n.y - y) < nh * .8)) return [x, y];
+    }
+    return pick();
+  }
+  // Turn pasted or typed list lines into notes: one per line, list markers removed.
+  const parseList = (text) => text.split(/\r?\n/).map((l) => l.replace(/^\s*(?:[-*•–·+]|\d+[.)]|\[[ xX]?\])\s*/, "").trim()).filter(Boolean);
+  function listLabel(text) {
+    const n = parseList(text).length;
+    return n ? `Make ${n} ${n === 1 ? "note" : "notes"}` : "Make notes";
+  }
+  function makeFromList() {
+    const items = parseList(S.listDraft || "");
+    if (!items.length) return;
+    const room = MAX_NOTES - notesOf(myTodayDoc()).length;
+    if (room <= 0) { toast(`You can have up to ${MAX_NOTES} notes a day. Remove one to add another.`); return; }
+    const made = items.slice(0, room).map((text) => ({ id: rid(), rot: +(Math.random() * 6 - 3).toFixed(1), color: S.prefs.paper, text: text.slice(0, 400) }));
+    S.listOpen = false; S.listDraft = "";
+    saveDay((d) => { d.notes.push(...made); }, { panel: true });
+    SFX.pops(made.length);
+    if (items.length > room) toast(`Made ${room} notes. A day holds up to ${MAX_NOTES}.`);
+  }
+  // Each posted update adds a line to today's update on the board; the desk box clears for the next one.
+  const postedLines = (d) => ((d && d.update) || "").split("\n").map((l) => l.trim()).filter(Boolean);
+  function setPosted(fn, opts) {
+    saveDay((d) => { const lines = postedLines(d); fn(lines); d.update = lines.map((l) => l.trim()).filter(Boolean).join("\n"); }, opts);
+  }
+  function postUpdate(text) {
+    const t = (text || "").trim();
+    if (!t || !canWrite()) return false;
+    saveDay((d) => { const cur = (d.update || "").trim(); d.update = (cur ? cur + "\n" + t : t).slice(-1500); }, { panel: true });
+    SFX.thud();
+    // Show the new message in my speech bubble for a few moments.
+    S.bubbleUntil = Date.now() + 3500;
+    renderBoard();
+    clearTimeout(S.bubbleTimer);
+    S.bubbleTimer = setTimeout(() => document.querySelectorAll(".name-tag.peek").forEach((el) => el.classList.remove("peek")), 3500);
+    return true;
+  }
+  function clearUpdDraft() {
+    S.updDraft = "";
+    LS.set("daybook.updDraft", "");
+    const ta = $("#in-update");
+    if (ta) ta.value = "";
+  }
+  // Post every desk note to my area, each in the spot that overlaps least with what's already there.
+  function postAll() {
+    const doc = myTodayDoc();
+    const desk = notesOf(doc).filter((n) => !placed(n));
+    if (!desk.length) return;
+    const cork = myCork();
+    const r = cork && cork.getBoundingClientRect(), nw = noteWPct(r);
+    const h = r && r.height ? nw * r.width / r.height : nw * 4 / 3;   // note height as % of the area
+    // Start below the name tag so posted notes don't cover it.
+    const head = cork && cork.closest(".face").querySelector(".q-head");
+    const hr = head && head.getBoundingClientRect();
+    const top = r && hr && r.height ? Math.min(40, ((hr.bottom - r.top) / r.height) * 100 + 2) : 14;
+    const xMin = 1, xMax = 100 - nw - 1, yMin = top, yMax = Math.max(top, 100 - h - 1);
+    const cols = Math.max(1, Math.floor((xMax - xMin) / nw) + 1), rows = Math.max(1, Math.floor((yMax - yMin) / h) + 1);
+    const grid = [];
+    for (let i = 0; i < rows; i++) for (let j = 0; j < cols; j++) {
+      grid.push({ x: cols > 1 ? xMin + j * (xMax - xMin) / (cols - 1) : xMin, y: rows > 1 ? yMin + i * (yMax - yMin) / (rows - 1) : yMin });
+    }
+    const boxes = notesOf(doc).filter(placed).map((n) => ({ x: n.x, y: n.y }));
+    const overlap = (a, b) => Math.max(0, nw - Math.abs(a.x - b.x)) * Math.max(0, h - Math.abs(a.y - b.y));
+    const spots = {};
+    for (const n of desk) {
+      const cands = [...grid, ...Array.from({ length: 80 }, () => ({ x: xMin + Math.random() * (xMax - xMin), y: yMin + Math.random() * (yMax - yMin) }))];
+      let best = cands[0], score = Infinity;
+      for (const c of cands) { const sc = boxes.reduce((t, b) => t + overlap(c, b), 0); if (sc < score - 1e-6) { score = sc; best = c; } }
+      boxes.push(best);
+      spots[n.id] = { x: best.x + (Math.random() - .5) * 2, y: best.y + (Math.random() - .5) * 2 };
+    }
+    let z = topZ();
+    saveDay((d) => d.notes.forEach((n) => {
+      const p = spots[n.id];
+      if (p) { n.x = +clamp(p.x, 0, 100 - nw).toFixed(2); n.y = +clamp(p.y, 0, Math.max(0, 100 - h)).toFixed(2); n.z = z++; }
+    }), { panel: true });
+    SFX.pins(desk.length);
+  }
+  function unpinAll() {
+    if (!notesOf(myTodayDoc()).some(placed)) return;
+    saveDay((d) => d.notes.forEach((n) => { if (placed(n)) { delete n.x; delete n.y; delete n.z; } }), { panel: true });
+    SFX.unpin();
+  }
+  function addNote() {
+    if (notesOf(myTodayDoc()).length >= MAX_NOTES) { toast(`You can have up to ${MAX_NOTES} notes a day. Remove one to add another.`); return; }
+    const n = { id: rid(), rot: +(Math.random() * 6 - 3).toFixed(1), color: S.prefs.paper, text: "" };
+    saveDay((d) => d.notes.push(n), { panel: true });
+    SFX.peel();
+    focusCard(n.id);
+  }
+  function pinNote(id, x, y) {
+    const z = topZ();
+    saveDay((d) => { const n = d.notes.find((v) => v.id === id); if (n) { n.x = +clamp(x, 0, 100 - myNoteW()).toFixed(2); n.y = +clamp(y, 0, 100 - myNoteH()).toFixed(2); n.z = z; } }, { panel: true });
+    SFX.pin();
+  }
+  function unpinNote(id) {
+    saveDay((d) => { const n = d.notes.find((v) => v.id === id); if (n) { delete n.x; delete n.y; delete n.z; } }, { panel: true });
+    SFX.unpin();
+    focusCard(id);
+  }
+  const myNoteW = () => { const c = myCork(); return noteWPct(c && c.getBoundingClientRect()); };
+  const myNoteH = () => { const c = myCork(); return noteHPct(c && c.getBoundingClientRect()); };
+  const myCork = () => document.querySelector(`#board .quad[data-key="${mySeat()}"] .face.front .cork`);
+
+  /* Dragging a note from the desk onto the board */
+  document.addEventListener("pointerdown", (ev) => {
+    const grip = ev.target.closest("[data-grip]");
+    if (!grip || ev.button > 0 || ev.target.closest("button")) return;
+    const id = grip.dataset.grip;
+    const n = notesOf(myTodayDoc()).find((v) => v.id === id);
+    if (!n) return;
+    ev.preventDefault();
+    const card = grip.closest(".card");
+    const cork = myCork();
+    const cr = cork && cork.getBoundingClientRect(), w = cr && cr.width ? cr.width * noteWPct(cr) / 100 : 100;
+    const ghost = document.createElement("div");
+    ghost.className = "note-ghost";
+    ghost.style.setProperty("--paper", PAPERS[n.color] || PAPERS.yellow);
+    ghost.style.width = w + "px";
+    ghost.textContent = card.querySelector("textarea").value || " ";
+    ghost.style.left = ev.clientX - w / 2 + "px";
+    ghost.style.top = ev.clientY - 12 + "px";
+    document.body.appendChild(ghost);
+    fitText(ghost, w * .3 * noteScale());
+    card.classList.add("lifted");
+    document.body.classList.add("carrying");
+    SFX.thwip();
+    S.deskDrag = { id, ghost, card, w, over: false };
+    try { grip.setPointerCapture(ev.pointerId); } catch (_) {}
+  });
+  document.addEventListener("pointermove", (ev) => {
+    const d = S.deskDrag;
+    if (!d) return;
+    d.ghost.style.left = ev.clientX - d.w / 2 + "px";
+    d.ghost.style.top = ev.clientY - 12 + "px";
+    bounceSeat(mySeat(), 900);
+    const cork = myCork();
+    const r = cork && cork.getBoundingClientRect();
+    const over = !!r && ev.clientX >= r.left && ev.clientX <= r.right && ev.clientY >= r.top && ev.clientY <= r.bottom;
+    if (over !== d.over) { d.over = over; cork && cork.classList.toggle("drop-target", over); }
+    d.overTrash = overEl($("#trash"), ev);
+    $("#trash").classList.toggle("hot", d.overTrash);
+    d.ghost.classList.toggle("into-trash", d.overTrash);
+    // Over the desk row, show where the note would land among the others.
+    const row = $("#note-row");
+    document.querySelectorAll(".card.drop-before, .card.drop-after").forEach((c) => c.classList.remove("drop-before", "drop-after"));
+    d.slot = null;
+    if (row && !over && overEl(row, ev)) {
+      const rr = row.getBoundingClientRect();
+      if (ev.clientX < rr.left + 40) row.scrollLeft -= 14; else if (ev.clientX > rr.right - 40) row.scrollLeft += 14;
+      const cards = [...row.querySelectorAll(".card")].filter((c) => c !== d.card);
+      const next = cards.find((c) => { const b = c.getBoundingClientRect(); return ev.clientX < b.left + b.width / 2; });
+      if (next) { next.classList.add("drop-before"); d.slot = { before: next.dataset.card }; }
+      else if (cards.length) { cards[cards.length - 1].classList.add("drop-after"); d.slot = { before: null }; }
+    }
+  });
+  function moveOnDesk(id, beforeId) {
+    saveDay((doc) => {
+      const i = doc.notes.findIndex((v) => v.id === id);
+      if (i < 0) return;
+      const [n] = doc.notes.splice(i, 1);
+      const j = beforeId ? doc.notes.findIndex((v) => v.id === beforeId) : doc.notes.length;
+      doc.notes.splice(j < 0 ? doc.notes.length : j, 0, n);
+    }, { panel: true });
+  }
+  function endDeskDrag(ev, cancelled) {
+    const d = S.deskDrag;
+    if (!d) return;
+    S.deskDrag = null;
+    d.ghost.remove();
+    d.card.classList.remove("lifted");
+    document.body.classList.remove("carrying");
+    $("#trash").classList.remove("hot");
+    const cork = myCork();
+    if (cork) cork.classList.remove("drop-target");
+    if (!cancelled && d.overTrash) { document.querySelectorAll(".card.drop-before, .card.drop-after").forEach((c) => c.classList.remove("drop-before", "drop-after")); removeNote(d.id); return; }
+    document.querySelectorAll(".card.drop-before, .card.drop-after").forEach((c) => c.classList.remove("drop-before", "drop-after"));
+    if (!cancelled && d.slot) { moveOnDesk(d.id, d.slot.before); return; }
+    if (cancelled || !d.over || !cork) return;
+    const r = cork.getBoundingClientRect();
+    pinNote(d.id, ((ev.clientX - r.left) / r.width) * 100 - noteWPct(r) / 2, ((ev.clientY - r.top) / r.height) * 100 - 2);
+  }
+  document.addEventListener("pointerup", (ev) => endDeskDrag(ev, false));
+  document.addEventListener("pointercancel", (ev) => endDeskDrag(ev, true));
+
+  function removeNote(id, quiet) {
+    const n = notesOf(myTodayDoc()).find((x) => x.id === id);
+    if (!n) return;
+    saveDay((d) => { d.notes = d.notes.filter((x) => x.id !== id); }, { panel: true });
+    SFX.trash();
+  }
+  function focusCard(id) {
+    requestAnimationFrame(() => {
+      const card = document.querySelector(`[data-card="${CSS.escape(id)}"]`);
+      if (!card) return;
+      card.scrollIntoView({ block: "nearest", inline: "nearest", behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+      const ta = card.querySelector("textarea");
+      ta.focus({ preventScroll: true });
+      ta.setSelectionRange(ta.value.length, ta.value.length);
+      card.classList.add("flash");
+      setTimeout(() => card.classList.remove("flash"), 900);
+    });
+  }
+
+  async function join(seat) {
+    if (!S.db || !S.myId || !SEAT_NAME[seat]) return;
+    if (holderOf(seat)) { toast(`Someone already joined as ${SEAT_NAME[seat]}.`); return; }
+    try {
+      await S.db.doc(`people/${S.myId}`).set({ joinedAt: Date.now(), tz: MY_TZ, seat });
+    } catch (e) { writeErr(e); }
+  }
+  async function leave() {
+    try { await S.db.doc(`people/${S.myId}`).delete(); S.confirmLeave = false; }
+    catch (e) { writeErr(e); }
+  }
+
+  /* ---------- dragging my notes on the board ---------- */
+  document.addEventListener("pointerdown", (ev) => {
+    const el = ev.target.closest(".note.own");
+    if (!el || ev.button > 0) return;
+    const id = el.dataset.note;
+    const n = notesOf(myTodayDoc()).find((x) => x.id === id);
+    if (!n) return;
+    S.drag = { id, el, note: n, cork: el.closest(".cork").getBoundingClientRect(), sx: ev.clientX, sy: ev.clientY, ox: n.x, oy: n.y, x: n.x, y: n.y, moved: false };
+    try { el.setPointerCapture(ev.pointerId); } catch (_) {}
+  });
+  const overEl = (el, ev) => { const r = el && el.getBoundingClientRect(); return !!r && ev.clientX >= r.left && ev.clientX <= r.right && ev.clientY >= r.top && ev.clientY <= r.bottom; };
+  function makeGhost(n, w, text) {
+    const g = document.createElement("div");
+    g.className = "note-ghost";
+    g.style.setProperty("--paper", PAPERS[n.color] || PAPERS.yellow);
+    g.style.width = w + "px";
+    g.textContent = text || " ";
+    document.body.appendChild(g);
+    fitText(g, w * .3 * noteScale());
+    return g;
+  }
+  document.addEventListener("pointermove", (ev) => {
+    const d = S.drag;
+    if (!d) return;
+    const dx = ev.clientX - d.sx, dy = ev.clientY - d.sy;
+    if (!d.moved && Math.hypot(dx, dy) < 5) return;
+    if (!d.moved) { d.moved = true; d.el.classList.add("dragging"); document.body.classList.add("carrying"); SFX.thwip(); }
+    bounceSeat(mySeat(), 900);
+    // Off the cork, the note lifts off the board and follows the pointer, so it can go back to the desk.
+    const c = d.cork;
+    const onCork = ev.clientX >= c.left && ev.clientX <= c.right && ev.clientY >= c.top && ev.clientY <= c.bottom;
+    const panel = $("#panel");
+    if (!onCork) {
+      const w = c.width * noteWPct(c) / 100;
+      if (!d.ghost) { d.ghost = makeGhost(d.note, w, d.note.text); d.el.style.visibility = "hidden"; }
+      d.ghost.style.left = ev.clientX - w / 2 + "px";
+      d.ghost.style.top = ev.clientY - 12 + "px";
+      d.overTrash = overEl($("#trash"), ev);
+      d.overDesk = !d.overTrash && overEl(panel, ev);
+      panel.classList.toggle("drop-target", d.overDesk);
+      $("#trash").classList.toggle("hot", d.overTrash);
+      d.ghost.classList.toggle("into-trash", d.overTrash);
+      return;
+    }
+    if (d.ghost) { d.ghost.remove(); d.ghost = null; d.el.style.visibility = ""; d.overDesk = false; panel.classList.remove("drop-target"); }
+    d.x = clamp(d.ox + (dx / d.cork.width) * 100, 0, 100 - noteWPct(d.cork));
+    d.y = clamp(d.oy + (dy / d.cork.height) * 100, 0, Math.max(0, 100 - (d.el.offsetHeight / d.cork.height) * 100));
+    d.el.style.left = d.x + "%";
+    d.el.style.top = d.y + "%";
+  });
+  function endDrag(cancelled) {
+    const d = S.drag;
+    if (!d) return;
+    S.drag = null;
+    S.pendingRender = false;
+    $("#panel").classList.remove("drop-target");
+    document.body.classList.remove("carrying");
+    $("#trash").classList.remove("hot");
+    if (d.ghost) {
+      d.ghost.remove();
+      if (!cancelled && d.overTrash) { removeNote(d.id); return; }
+      if (!cancelled && d.overDesk) { unpinNote(d.id); return; }
+      renderBoard();
+      return;
+    }
+    if (cancelled) { renderBoard(); return; }
+    if (d.moved) {
+      const z = topZ();
+      saveDay((doc) => { const n = doc.notes.find((x) => x.id === d.id); if (n) { n.x = +d.x.toFixed(2); n.y = +d.y.toFixed(2); n.z = z; } });
+      SFX.pin();
+    } else {
+      renderBoard();
+    }
+  }
+  document.addEventListener("pointerup", () => endDrag(false));
+  document.addEventListener("pointercancel", () => endDrag(true));
+
+  /* ---------- history ---------- */
+  async function openHistory() {
+    S.history.open = true;
+    $("#historyScrim").hidden = false;
+    renderHistory();
+    await loadHistory();
+  }
+  // Each card in History is the whole board for one day: everyone's days are loaded and lined up by date.
+  async function loadHistory() {
+    const H = S.history, token = ++H.token;
+    H.selDate = null;
+    const people = SEAT_KEYS.map((k) => [k, holderOf(k)]).filter(([, m]) => m);
+    if (!S.db || !people.length) { renderHistory(); return; }
+    H.loading = true; H.days = [];
+    renderHistory();
+    const lists = await Promise.all(people.map(([k, m]) => S.db.collection(`people/${m.id}/days`).orderBy("date", "desc").limit(400).get()
+      .then((snap) => [k, snap.docs.map((d) => d.data())], () => [k, null])));
+    if (token !== H.token) return;
+    if (lists.every(([, l]) => !l)) toast("Couldn't load history. Try again in a moment.");
+    const byDate = {};
+    for (const [k, list] of lists) for (const d of list || []) {
+      if (!d.date || !(notesOf(d).length || (d.update || "").trim())) continue;
+      (byDate[d.date] = byDate[d.date] || { date: d.date, seats: {} }).seats[k] = d;
+    }
+    H.days = Object.values(byDate);
+    H.loading = false;
+    renderHistory();
+  }
+  // A past day reads like the list side of the board: the date (hover it for that day's update), then the notes in board order.
+  function historyDayHTML(d, opts) {
+    const upd = (d.update || "").trim();
+    const hl = (t) => (opts.mark ? opts.mark(t) : esc(t));
+    const when = `<span class="day-when">${esc(fmtDay(d.date, opts.withYear))}</span>`;
+    // In History the day's update is shown in full at the top, with the notes listed below.
+    const head = when + (upd ? `<p class="day-upd">${hl(upd)}</p>` : "");
+    const rows = boardOrder(notesOf(d).filter(placed)).map((n) => `<li class="task ${opts.match && !opts.match(n) ? "dim" : ""}"><span class="chip-dot" style="--paper:${PAPERS[n.color] || PAPERS.yellow}"></span><span class="t">${hl(n.text || "")}</span></li>`).join("");
+    return `<article class="day">${head}${rows ? `<ol class="tasklist">${rows}</ol>` : ""}</article>`;
+  }
+  // History is a card-file drawer: days stand side by side, oldest on the left, with a manila divider
+  // before each month. The chosen card opens to full width; riffle with the pointer, wheel or arrow keys.
+  const CARD_STRIP = 44, DIV_STRIP = 30;
+  const cardW = () => Math.min(340, Math.max(220, ($("#history")?.clientWidth || 400) - 120));
+  const selW = () => { const hw = $("#history")?.clientWidth || 400; return hw < 560 ? Math.max(220, hw - 90) : Math.min(640, Math.max(cardW(), hw - 300)); };
+  // The whole board for a day, redrawn from where everyone's notes were pinned when the day ended.
+  function boardSnapHTML(day, opts = {}) {
+    const withAspect = Object.values(day.seats).find((d) => d.aspect > .5 && d.aspect < 6);
+    const aspect = withAspect ? withAspect.aspect : 4 / 3;
+    const quads = viewOrder().map((k) => {
+      const d = day.seats[k], notes = d ? notesOf(d).filter(placed) : [];
+      return `<div class="snap-q"><span class="snap-name">${esc(SEAT_NAME[k])}</span><div class="cork snap">${notes.map((n) => noteHTML(n, { mark: opts.mark, dim: opts.match ? !opts.match(n) : false })).join("")}</div></div>`;
+    }).join("");
+    return `<div class="snap-board${opts.mini ? " mini" : ""}" style="--snap-ar:${aspect}" role="img" aria-label="Board on ${esc(fmtDay(day.date, true))}">${quads}</div>`;
+  }
+  // History shows one person at a time (me by default): their days in the card drawer, each card with the
+  // message and notes, plus a small picture of that day's whole board that opens large.
+  function historyWho() {
+    const H = S.history;
+    if (H.who && holderOf(H.who)) return H.who;
+    const mine = mySeat();
+    return mine && holderOf(mine) ? mine : viewOrder().find((k) => holderOf(k)) || null;
+  }
+  function renderHistory() {
+    if (!S.history.open) return;
+    const H = S.history;
+    const q = H.q.trim().toLowerCase();
+    const noteMatch = (n) => (n.text || "").toLowerCase().includes(q);
+    const who = historyWho();
+    const docMatch = (d) => notesOf(d).some(noteMatch) || (d.update || "").toLowerCase().includes(q);
+    const days = (who ? H.days.filter((day) => day.seats[who]) : []).filter((day) => !q || docMatch(day.seats[who])).sort((a, b) => (a.date < b.date ? -1 : 1));
+    const re = q ? new RegExp(esc(H.q.trim()).replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "gi") : null;
+    const mark = re ? (t) => esc(t).replace(re, (m) => `<mark>${m}</mark>`) : null;
+    const thisYear = myToday().slice(0, 4);
+    const items = [];
+    let month = "", tab = 0;
+    for (const d of days) {
+      const m = d.date.slice(0, 7);
+      if (m !== month) {
+        month = m;
+        const label = new Intl.DateTimeFormat("en-GB", { month: "short", timeZone: "UTC" }).format(new Date(keyMs(m + "-01"))) + (m.slice(0, 4) !== thisYear ? " " + m.slice(2, 4) : "");
+        items.push({ type: "div", label, tab: (tab++ % 3) * 18 });
+      }
+      items.push({ type: "day", d });
+    }
+    H.items = items;
+    let sel = items.findIndex((it) => it.type === "day" && it.d.date === H.selDate);
+    if (sel < 0) for (let i = items.length - 1; i >= 0; i--) if (items[i].type === "day") { sel = i; break; }
+    H.sel = sel;
+    const w = cardW();
+    const drawer = items.length ? `<div class="drawer" id="drawer" tabindex="0" role="listbox" aria-label="Days, oldest to newest" style="--w:${w}px">
+        <div class="drawer-track" id="drawer-track">${items.map((it, i) => it.type === "div"
+          ? `<div class="fitem fdiv" data-act="drawer-pick" data-idx="${i}" style="--tab-x:${it.tab}px"><span class="ftab">${esc(it.label)}</span></div>`
+          : `<article class="fitem fcard" data-act="drawer-pick" data-idx="${i}" role="option" aria-selected="${i === sel}" aria-label="${esc(fmtDay(it.d.date, true))}">
+              <span class="fspine">${esc(fmtDay(it.d.date, it.d.date.slice(0, 4) !== thisYear))}</span>
+              <div class="fbody"><button type="button" class="board-thumb" data-act="board-zoom" data-date="${esc(it.d.date)}" aria-label="See the whole board on ${esc(fmtDay(it.d.date, true))}">${boardSnapHTML(it.d, { mini: true })}</button>${historyDayHTML(it.d.seats[who], { mark, match: q ? noteMatch : null, withYear: it.d.date.slice(0, 4) !== thisYear })}</div>
+            </article>`).join("")}</div></div>` : "";
+    const filter = `<div class="chips" role="group" aria-label="Whose days">${viewOrder().map((k) => `<button class="chip" type="button" data-act="hist-who" data-seat="${k}" aria-pressed="${who === k}" ${holderOf(k) ? "" : "disabled"}>${esc(SEAT_NAME[k])}</button>`).join("")}</div>`;
+    keepFocus(() => {
+      $("#history").innerHTML = `<div class="sheet-head"><h2 id="historyTitle">History</h2>
+        <button class="icon-btn" type="button" data-act="close" aria-label="Close history">${IC.close}</button></div>
+        ${filter}
+        <div class="search"><input class="field" id="in-search" type="search" placeholder="Search notes and messages" value="${esc(H.q)}" aria-label="Search notes and messages">
+          <span class="muted">${H.loading ? "Loading…" : `${days.length} ${days.length === 1 ? "day" : "days"}${q ? " match" : ""}`}</span></div>
+        ${drawer}
+        ${!H.loading && !days.length ? `<p class="muted">${q ? "Nothing matches that search." : team().length ? "Nothing saved yet." : "No one has joined yet."}</p>` : ""}`;
+    });
+    layoutDrawer(false);
+  }
+  // The whole board for a day, enlarged over everything like a photo. Click anywhere or press Escape to close.
+  function openBoardZoom(date) {
+    const day = S.history.days.find((d) => d.date === date);
+    if (!day) return;
+    closeBoardZoom();
+    const box = document.createElement("div");
+    box.className = "board-zoom";
+    box.id = "boardZoom";
+    box.dataset.act = "zoom-close";
+    box.setAttribute("role", "dialog");
+    box.setAttribute("aria-label", `Board on ${fmtDay(date, true)}`);
+    box.innerHTML = boardSnapHTML(day, {});
+    document.body.appendChild(box);
+    requestAnimationFrame(() => { box.classList.add("in"); box.querySelectorAll(".snap .note").forEach(fitNote); });
+    SFX.whoosh(true);
+  }
+  function closeBoardZoom() { const z = $("#boardZoom"); if (z) z.remove(); }
+  // Place every card: each shows a strip, the chosen one opens to full width and the rest slide over.
+  function layoutDrawer(smooth = true, nearest = false) {
+    const track = $("#drawer-track"), drawer = $("#drawer");
+    if (!track || !drawer) return;
+    const H = S.history, w = cardW(), sw = selW();
+    drawer.style.setProperty("--w", w + "px");
+    let x = 0, right = 0, selLeft = 0;
+    [...track.children].forEach((el, i) => {
+      const isSel = i === H.sel;
+      el.style.left = x + "px";
+      el.style.zIndex = isSel ? 900 : i + 1;
+      el.style.width = (isSel ? sw : w) + "px";
+      el.classList.toggle("sel", isSel);
+      el.classList.toggle("before", i < H.sel);
+      if (el.classList.contains("fcard")) el.setAttribute("aria-selected", String(isSel));
+      if (isSel) selLeft = x;
+      right = Math.max(right, x + (isSel ? sw : w));
+      x += isSel ? sw + 12 : el.classList.contains("fdiv") ? DIV_STRIP : CARD_STRIP;
+    });
+    track.style.width = right + 12 + "px";
+    // Size the note text in the open card's snapshot.
+    const open = track.children[H.sel];
+    const fitSnap = () => open && open.classList.contains("sel") && open.querySelectorAll(".snap .note").forEach(fitNote);
+    clearTimeout(S.snapFitTimer);
+    S.snapFitTimer = setTimeout(fitSnap, 470);
+    const pad = 36;
+    // Keyboard, wheel and first open centre the open card; a hover only scrolls as far as needed,
+    // so cards don't slide out from under the pointer.
+    let target = Math.max(0, selLeft - (drawer.clientWidth - sw) / 2);
+    if (nearest) {
+      target = drawer.scrollLeft;
+      if (selLeft - pad < drawer.scrollLeft) target = selLeft - pad;
+      else if (selLeft + sw + pad > drawer.scrollLeft + drawer.clientWidth) target = selLeft + sw + pad - drawer.clientWidth;
+    }
+    if (!smooth) drawer.scrollLeft = target;
+    else drawer.scrollTo({ left: target, behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+  }
+  function selectDrawer(i, nearest = false) {
+    const H = S.history, it = H.items && H.items[i];
+    if (!it || it.type !== "day" || i === H.sel) return;
+    H.sel = i; H.selDate = it.d.date;
+    SFX.riffle();
+    layoutDrawer(true, nearest);
+  }
+  function stepDrawer(dir) {
+    const items = S.history.items || [];
+    for (let i = S.history.sel + dir; i >= 0 && i < items.length; i += dir) if (items[i].type === "day") { selectDrawer(i); return; }
+  }
+  // Riffle: sweeping the mouse across the strips opens each card in turn.
+  // Only real mouse movement riffles; cards sliding under a still pointer don't.
+  document.addEventListener("pointermove", (ev) => {
+    if (ev.pointerType !== "mouse" || (!ev.movementX && !ev.movementY)) return;
+    const card = ev.target.closest && ev.target.closest("#drawer .fcard");
+    if (card && !card.classList.contains("sel")) selectDrawer(+card.dataset.idx, true);
+  });
+  let wheelAcc = 0;
+  document.addEventListener("wheel", (ev) => {
+    if (!ev.target.closest || !ev.target.closest("#drawer")) return;
+    if (ev.target.closest(".fcard.sel .fbody") && Math.abs(ev.deltaY) > Math.abs(ev.deltaX)) {
+      const body = ev.target.closest(".fbody");
+      if (body.scrollHeight > body.clientHeight) return;
+    }
+    ev.preventDefault();
+    wheelAcc += Math.abs(ev.deltaX) > Math.abs(ev.deltaY) ? ev.deltaX : ev.deltaY;
+    while (Math.abs(wheelAcc) >= 60) { stepDrawer(wheelAcc > 0 ? 1 : -1); wheelAcc -= Math.sign(wheelAcc) * 60; }
+  }, { passive: false });
+  if (window.ResizeObserver) new ResizeObserver(() => layoutDrawer(false)).observe(document.querySelector("#history"));
+
+  /* ---------- settings ---------- */
+  function seg(key, options) {
+    return `<div class="seg" role="group">${options.map(([v, l]) => `<button type="button" data-act="pref" data-k="${key}" data-v="${v}" aria-pressed="${String(S.prefs[key]) === String(v)}">${esc(l)}</button>`).join("")}</div>`;
+  }
+  function renderSettings() {
+    if (!S.settingsOpen) return;
+    const p = S.prefs;
+    const others = SEAT_KEYS.filter((k) => k !== mySeat());
+    const order = viewOrder();
+    $("#settings").innerHTML = `<div class="sheet-head"><h2 id="settingsTitle">My view</h2>
+        <button class="icon-btn" type="button" data-act="close" aria-label="Close My view">${IC.close}</button></div>
+      ${mySeat() && canWrite() ? `<div class="group"><span class="lbl">My avatar</span>
+          ${window.DaybookAvatar ? avatarBuilderHTML() : `<span class="muted">The avatar maker didn't load. Reload the page to try again.</span>`}</div>` : ""}
+      <div class="group"><span class="lbl">Positions</span>
+        <div class="positions" role="group" aria-label="Board positions">${order.map((k, i) => `<button type="button" data-act="swap" data-seat="${k}" aria-pressed="${S.swapPick === k}">${esc(SEAT_NAME[k])}<small>${["Top left", "Top right", "Bottom left", "Bottom right"][i]}</small></button>`).join("")}</div>
+        <span class="muted" style="font-size:.88em">${S.swapPick ? `Now tap where ${esc(SEAT_NAME[S.swapPick])} should go.` : ""}</span></div>
+      <div class="group"><span class="lbl">New note color</span><div class="swatches">${Object.entries(PAPERS).map(([k, c]) => `<button class="swatch" type="button" data-act="pref" data-k="paper" data-v="${k}" aria-pressed="${p.paper === k}" aria-label="${k}" style="background:${c}"></button>`).join("")}</div></div>
+      <div class="group"><span class="lbl">Accent</span><div class="swatches">${Object.entries(ACCENTS).map(([k, c]) => `<button class="swatch" type="button" data-act="pref" data-k="accent" data-v="${k}" aria-pressed="${p.accent === k}" aria-label="${k}" style="background:linear-gradient(135deg, ${c[0]} 50%, ${c[1]} 50%)"></button>`).join("")}</div></div>
+      <div class="group"><span class="lbl">Background</span>${seg("map", [["false", "Plain"], ["true", "Map"]])}</div>
+      <div class="group"><span class="lbl">Sounds</span>${seg("sound", [["true", "On"], ["false", "Off"]])}</div>
+      ${p.map ? `<p class="muted" style="margin:auto 0 0;font-size:.75em">Map data: Natural Earth; lakes © OpenStreetMap contributors.</p>` : ""}`;
+  }
+
+  /* ---------- events ---------- */
+  function closeSheets() {
+    $("#historyScrim").hidden = true; $("#settingsScrim").hidden = true;
+    closeBoardZoom();
+    S.history.open = false; S.settingsOpen = false; S.confirmLeave = false; S.swapPick = null;
+  }
+  document.addEventListener("click", (ev) => {
+    const b = ev.target.closest("[data-act]");
+    if (!b) return;
+    const act = b.dataset.act;
+    if (act === "scrim") { if (ev.target === b) closeSheets(); return; }
+    switch (act) {
+      case "open-history": openHistory(); break;
+      case "open-settings": S.settingsOpen = true; $("#settingsScrim").hidden = false; renderSettings(); break;
+      case "close": closeSheets(); break;
+      case "join": join(b.dataset.seat); break;
+      case "add-note": addNote(); break;
+      case "desk-toggle": if (S.deskOpen) { S.deskOpen = false; applyDesk(); SFX.whoosh(false); break; }
+      // falls through to open
+      case "desk-open": S.deskOpen = true; applyDesk(); SFX.whoosh(true); setTimeout(() => $("#in-update")?.focus({ preventScroll: true }), 450); break;
+      case "desk-close": S.deskOpen = false; applyDesk(); SFX.whoosh(false); break;
+      case "post-all": postAll(); break;
+      case "heart": toggleHeart(b.dataset.note, b.closest(".quad")?.dataset.key); break;
+      case "hist-who": S.history.who = b.dataset.seat || null; S.history.selDate = null; SFX.tick(); renderHistory(); break;
+      case "board-zoom": openBoardZoom(b.dataset.date); break;
+      case "zoom-close": closeBoardZoom(); break;
+      case "unpin-all": unpinAll(); break;
+      case "list-open": S.listOpen = !S.listOpen; renderPanel(); if (S.listOpen) $("#in-list")?.focus(); break;
+      case "list-cancel": S.listOpen = false; S.listDraft = ""; renderPanel(); break;
+      case "list-make": makeFromList(); break;
+      case "av-pick": { const c = S.avBatch && S.avBatch[+b.dataset.i]; if (c) { setAvatar({ ...c }); SFX.boop(); } break; }
+      case "av-batch": newBatch(); renderSettings(); break;
+      case "quick": {
+        const ta = $("#in-update"), text = QUICK_UPDATES[+b.dataset.i][1];
+        if (ta) { ta.value = text; S.updDraft = text; LS.set("daybook.updDraft", text); ta.focus(); ta.setSelectionRange(text.length, text.length); }
+        SFX.tick();
+        break;
+      }
+      case "posted-toggle": S.editPosted = !S.editPosted; renderPanel(); break;
+      case "posted-del": { const i = +b.dataset.i; setPosted((L) => L.splice(i, 1), { panel: true }); if (!postedLines(myTodayDoc()).length) { S.editPosted = false; renderPanel(); } break; }
+      case "upd-submit": { const ta = $("#in-update"); const v = ta ? ta.value : ""; if (v.trim()) { clearUpdDraft(); postUpdate(v); } $("#in-update")?.focus(); break; }
+      case "card-color": {
+        const id = b.dataset.id, color = b.dataset.color;
+        saveDay((d) => { const n = d.notes.find((x) => x.id === id); if (n) n.color = color; });
+        const card = b.closest(".card");
+        card.style.setProperty("--paper", PAPERS[color]);
+        card.querySelectorAll(".dot").forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
+        break;
+      }
+      case "card-delete": removeNote(b.dataset.id); break;
+      case "drawer-pick": {
+        const items = S.history.items || [];
+        let i = +b.dataset.idx;
+        if (items[i] && items[i].type === "div") i = items.findIndex((it, j) => j > i && it.type === "day");
+        if (i >= 0 && items[i]) selectDrawer(i);
+        break;
+      }
+      case "pref": setPref(b.dataset.k, b.dataset.k === "sound" || b.dataset.k === "map" ? b.dataset.v === "true" : b.dataset.v); if (b.dataset.k === "sound" && b.dataset.v === "true") SFX.boop(); break;
+      case "swap": {
+        const k = b.dataset.seat;
+        if (!S.swapPick || S.swapPick === k) { S.swapPick = S.swapPick === k ? null : k; renderSettings(); break; }
+        const o = viewOrder();
+        const i = o.indexOf(S.swapPick), j = o.indexOf(k);
+        [o[i], o[j]] = [o[j], o[i]];
+        S.swapPick = null;
+        setPref("order", o);
+        break;
+      }
+      case "leave": S.confirmLeave = true; renderSettings(); break;
+      case "leave-no": S.confirmLeave = false; renderSettings(); break;
+      case "leave-yes": leave().then(renderSettings); break;
+    }
+  });
+  document.addEventListener("input", (ev) => {
+    const t = ev.target;
+    if (t.id === "in-list") {
+      S.listDraft = t.value;
+      const btn = $("#list-make");
+      if (btn) btn.textContent = listLabel(t.value);
+      return;
+    }
+    if (t.dataset.cardText) {
+      fitCard(t);
+      const id = t.dataset.cardText, v = t.value;
+      saveDay((d) => { const n = d.notes.find((x) => x.id === id); if (n) n.text = v; }, { delay: 700 });
+    } else if (t.dataset.posted !== undefined) {
+      const i = +t.dataset.posted, v = t.value;
+      if (v.trim()) setPosted((L) => { L[i] = v; }, { delay: 700 });
+    } else if (t.id === "in-update") {
+      S.updDraft = t.value;
+      LS.set("daybook.updDraft", t.value);
+    } else if (t.id === "in-search") { S.history.q = t.value; renderHistory(); }
+  });
+  document.addEventListener("focusout", (ev) => {
+    const t = ev.target;
+    if (t.dataset && t.dataset.posted !== undefined && !t.value.trim()) {
+      const i = +t.dataset.posted;
+      setPosted((L) => L.splice(i, 1), { panel: true });
+      return;
+    }
+    if (t.isConnected && t.closest && $("#panel").contains(t)) setTimeout(flushPanel, 0);
+  });
+  document.addEventListener("keydown", (ev) => {
+    if ((ev.key === "Enter" || ev.key === " ") && ev.target.matches && ev.target.matches('.heart[data-act="heart"]')) { ev.preventDefault(); ev.target.click(); return; }
+    const t = ev.target;
+    // Enter posts the update to the board; Shift+Enter adds a new line.
+    if (t.dataset && t.dataset.posted !== undefined && ev.key === "Enter") { ev.preventDefault(); t.blur(); return; }
+    // Up in an empty update box opens your last line for editing.
+    if (t.id === "in-update" && ev.key === "ArrowUp" && !t.value && postedLines(myTodayDoc()).length) {
+      ev.preventDefault();
+      S.editPosted = true; renderPanel();
+      const inputs = document.querySelectorAll("[data-posted]");
+      const last = inputs[inputs.length - 1];
+      if (last) { last.focus(); last.setSelectionRange(last.value.length, last.value.length); }
+      return;
+    }
+    if (t.id === "in-update" && ev.key === "Enter" && !ev.shiftKey && !ev.isComposing) {
+      ev.preventDefault();
+      const v = t.value;
+      if (v.trim()) { clearUpdDraft(); postUpdate(v); }
+      return;
+    }
+    if (t.classList && t.classList.contains("own") && t.dataset.note) {
+      const id = t.dataset.note;
+      const step = ev.shiftKey ? 5 : 1;
+      const mv = { ArrowLeft: [-step, 0], ArrowRight: [step, 0], ArrowUp: [0, -step], ArrowDown: [0, step] }[ev.key];
+      if (mv) {
+        ev.preventDefault();
+        saveDay((d) => { const n = d.notes.find((x) => x.id === id); if (n) { n.x = clamp(n.x + mv[0], 0, 100 - myNoteW()); n.y = clamp(n.y + mv[1], 0, 100 - myNoteH()); } });
+        requestAnimationFrame(() => document.querySelector(`.note.own[data-note="${CSS.escape(id)}"]`)?.focus());
+        return;
+      }
+      if (ev.key === "Delete" || ev.key === "Backspace") { ev.preventDefault(); removeNote(id); return; }
+      if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); unpinNote(id); return; }
+    }
+    if (t.id === "drawer" && ["ArrowLeft", "ArrowRight", "Home", "End"].includes(ev.key)) {
+      ev.preventDefault();
+      if (ev.key === "ArrowLeft") stepDrawer(-1);
+      else if (ev.key === "ArrowRight") stepDrawer(1);
+      else {
+        const items = S.history.items || [];
+        const idx = items.map((it, i) => (it.type === "day" ? i : -1)).filter((i) => i >= 0);
+        if (idx.length) selectDrawer(ev.key === "Home" ? idx[0] : idx[idx.length - 1]);
+      }
+      return;
+    }
+    if (ev.key === "Escape") {
+      if ($("#boardZoom")) closeBoardZoom();
+      else if (!$("#historyScrim").hidden || !$("#settingsScrim").hidden) closeSheets();
+      else if (t.closest && t.closest(".name-tag")) t.blur();
+    }
+  });
+  document.addEventListener("change", (ev) => {
+    const t = ev.target;
+    if (t.dataset.show) {
+      const id = t.dataset.show;
+      const hidden = S.prefs.hidden.filter((x) => x !== id);
+      if (!t.checked) hidden.push(id);
+      setPref("hidden", hidden);
+    }
+  });
+
+  /* ---------- boot ---------- */
+  let lastDay = myToday();
+  setInterval(() => {
+    const k = myToday();
+    if (k !== lastDay && !S.drag && !panelBusy()) { if (flushTimer) flush(lastDay); lastDay = k; S.local = {}; renderAll(); carryOver(); }
+  }, 60000);
+
+  async function boot() {
+    applyPrefs();
+    applyDesk();
+    renderAll();
+    const c = window.claude;
+    if (!c || typeof c.use !== "function") { S.ready = true; renderAll(); return; }
+    const [db, user] = await Promise.all([c.use("db"), c.use("user")]);
+    S.db = db; S.user = user;
+    if (!db) { S.ready = true; renderAll(); return; }
+    S.myId = user ? await user.id() : null;
+    if (user && (await user.can("data.write")) === false) S.readOnly = true;
+    if (S.myId) {
+      try {
+        const p = await db.doc(`data/users/${S.myId}/prefs`).get();
+        if (p.exists) {
+          S.prefs = { ...DEFAULT_PREFS, ...p.data() };
+          S.prefs.hidden = (S.prefs.hidden || []).filter((k) => SEAT_NAME[k]);
+          LS.set("daybook.prefs", S.prefs); applyPrefs();
+        }
+      } catch (e) {}
+    }
+    db.collection("people").orderBy("joinedAt").limit(12).onSnapshot(onMembers, () => {
+      S.ready = true;
+      showNotice("Lost the connection to the board. Reload the page to reconnect.");
+      renderAll();
+    });
+  }
+  boot();
+})();
+</script>
