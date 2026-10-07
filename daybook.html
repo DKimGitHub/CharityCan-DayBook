@@ -93,7 +93,7 @@ button { cursor: pointer; }
 }
 .rail::before { content: ""; position: absolute; left: 0; top: 4px; bottom: 4px; width: 1px; background: var(--line); }
 .rail-line { display: none; }
-/* Three groups: Add at the top, History and My view in the middle, the trash at the bottom. */
+/* Three groups: Add at the top, History and Settings in the middle, the trash at the bottom. */
 .rail { display: grid !important; grid-template-rows: 1fr auto 1fr; justify-items: center; }
 .rail-group { display: flex; flex-direction: column; align-items: center; gap: 4px; }
 .rail-group.top { align-self: start; }
@@ -524,6 +524,12 @@ body:not(.show-map) .page-map, body:not(.show-map) .page-cities { display: none;
 @media (prefers-reduced-motion: no-preference) {
   .sheet { animation: slide .18s ease-out; }
   @keyframes slide { from { transform: translateX(24px); opacity: .6; } }
+  .scrim.closing { animation: scrim-out .16s ease-in forwards; }
+  .scrim.closing .sheet { animation: slide-out .16s ease-in forwards; }
+  @keyframes scrim-out { to { opacity: 0; } }
+  @keyframes slide-out { to { transform: translateX(24px); opacity: 0; } }
+  #board.page-anim, #panel.page-anim { animation: page-in .22s ease-out; }
+  @keyframes page-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 }
 
 /* Page switcher */
@@ -541,25 +547,20 @@ body:not(.show-map) .page-map, body:not(.show-map) .page-cities { display: none;
   gap: 0; height: 100%; min-height: 0; position: relative;
 }
 .dwin {
-  background: var(--surface); border: 1px solid var(--line);
+  background: var(--surface); border: 1px solid var(--line); border-radius: 6px;
   box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .03); padding: 12px; box-sizing: border-box; min-width: 0; min-height: 0;
   display: flex; flex-direction: column; gap: 6px;
 }
-/* Each window's two inner corners (facing the canary) are square so they meet their neighbour exactly; the outer two stay rounded. */
-.dwin.n { grid-area: n; border-radius: var(--radius) var(--radius) 0 0; }
-.dwin.w { grid-area: w; border-radius: var(--radius) 0 0 var(--radius); }
-.dwin.e { grid-area: e; border-radius: 0 var(--radius) var(--radius) 0; }
-.dwin.s { grid-area: s; border-radius: 0 0 var(--radius) var(--radius); }
-.dwin-head { display: flex; align-items: center; }
+.dwin.n { grid-area: n; } .dwin.w { grid-area: w; } .dwin.e { grid-area: e; } .dwin.s { grid-area: s; }
+.dwin-head { display: flex; align-items: center; gap: 8px; }
+.dwin-head .av { width: 22px; height: 22px; }
 .dwin-name { font-weight: 700; color: var(--muted); }
 .dwin-body { flex: 1; min-height: 0; overflow: auto; display: flex; flex-direction: column; justify-content: center; }
 .dwin-text { margin: 0; overflow-wrap: anywhere; white-space: pre-wrap; }
 .dwin-empty { margin: 0; }
 .dwin-time { font-size: .76em; color: var(--muted); margin-top: 4px; }
-.dwin-queued { align-self: flex-start; font-size: .76em; font-weight: 700; color: var(--warn); background: var(--warn-bg); border-radius: 999px; padding: 2px 10px; }
 @media (max-width: 720px) {
   .daily-stage { grid-template-columns: minmax(0, 1fr); grid-template-rows: none; grid-template-areas: "n" "w" "e" "s"; gap: 10px; }
-  .daily-stage .dwin { border-radius: var(--radius); }
   .canary-wrap { display: none; }
 }
 
@@ -591,7 +592,9 @@ body:not(.show-map) .page-map, body:not(.show-map) .page-cities { display: none;
 .daily-actions { display: flex; align-items: center; gap: 8px; }
 .clock-btn { border: 1px solid var(--line); }
 .clock-btn:hover { border-color: var(--accent); }
-.dq-chip { display: flex; align-items: center; gap: 6px; background: var(--surface-2); border-radius: 999px; padding: 4px 6px 4px 12px; font-size: .9em; margin: 0; align-self: flex-start; }
+.dq-row-chip { display: flex; align-items: center; gap: 4px; align-self: flex-start; }
+.dq-chip { background: var(--surface-2); border: 0; border-radius: 999px; padding: 5px 12px; font-size: .9em; margin: 0; cursor: pointer; font-family: inherit; color: inherit; text-align: left; }
+.dq-chip:hover { background: var(--line); }
 </style>
 
 <div class="page-map" aria-hidden="true">
@@ -632,7 +635,7 @@ body:not(.show-map) .page-map, body:not(.show-map) .page-cities { display: none;
       </button>
       <button class="rail-btn" type="button" data-act="open-settings">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/></svg>
-        <span>My view</span>
+        <span>Settings</span>
       </button>
       </div>
       <div class="rail-group bottom">
@@ -967,6 +970,13 @@ body:not(.show-map) .page-map, body:not(.show-map) .page-cities { display: none;
       }
     }
   }
+  // Replays a short fade/rise-in animation on an element whose content just changed wholesale (a page switch).
+  function animateSwap(el) {
+    if (!el) return;
+    el.classList.remove("page-anim");
+    void el.offsetWidth;
+    el.classList.add("page-anim");
+  }
   function renderTop() {
     const k = myToday();
     $("#todayLbl").textContent = new Intl.DateTimeFormat("en-GB", { weekday: "long", day: "numeric", month: "long", timeZone: "UTC" }).format(new Date(keyMs(k)));
@@ -1053,7 +1063,7 @@ body:not(.show-map) .page-map, body:not(.show-map) .page-cities { display: none;
     const notes = [];
     if (S.readOnly && S.myId) notes.push("You can look at the board, but you can't post. Ask the owner to share this page with you as a Contributor.");
     const hiddenCount = SEAT_KEYS.length - keys.length;
-    if (hiddenCount) notes.push(`${hiddenCount} ${hiddenCount > 1 ? "areas are" : "area is"} hidden in your view. Change it in My view.`);
+    if (hiddenCount) notes.push(`${hiddenCount} ${hiddenCount > 1 ? "areas are" : "area is"} hidden in your view. Change it in Settings.`);
     showNotice(notes.join(" "));
   }
 
@@ -1099,19 +1109,15 @@ body:not(.show-map) .page-map, body:not(.show-map) .page-cities { display: none;
   </svg>`;
   function dailyWindowHTML(key, pos) {
     const m = holderOf(key), name = SEAT_NAME[key];
-    if (!m) return `<section class="dwin ${pos}" data-key="${key}"><div class="dwin-head"><span class="dwin-name">${esc(name)}</span></div><div class="dwin-body"><p class="dwin-empty muted">Hasn't joined yet.</p></div></section>`;
-    const isMe = m.id === S.myId;
-    const doc = teammateDayDoc(key);
-    const vis = visibleDaily(doc);
-    const queue = doc && doc.dailyQueue;
-    const queuedPending = isMe && queue && queue.showAt > Date.now();
+    const head = `<div class="dwin-head">${badge(key)}<span class="dwin-name">${esc(name)}</span></div>`;
+    if (!m) return `<section class="dwin ${pos}" data-key="${key}">${head}<div class="dwin-body"><p class="dwin-empty muted">Hasn't joined yet.</p></div></section>`;
+    const vis = visibleDaily(teammateDayDoc(key));
     const body = vis
       ? `<p class="dwin-text">${esc(vis.text)}</p><span class="dwin-time">${fmtTime(vis.at)}</span>`
       : `<p class="dwin-empty muted">No update yet today.</p>`;
     return `<section class="dwin ${pos}" data-key="${key}" aria-label="${esc(name)}'s daily update">
-      <div class="dwin-head"><span class="dwin-name">${esc(name)}</span></div>
+      ${head}
       <div class="dwin-body">${body}</div>
-      ${queuedPending ? `<span class="dwin-queued">Queued for ${fmtTime(queue.showAt)}</span>` : ""}
     </section>`;
   }
   // Fires the canary's reaction when any window's visible text changes (first render just records state, it doesn't react).
@@ -1161,18 +1167,23 @@ body:not(.show-map) .page-map, body:not(.show-map) .page-cities { display: none;
   addEventListener("pointermove", (ev) => { if (S.page === "daily") trackCanary(ev.clientX, ev.clientY); });
   function renderDailyPanel(P) {
     const doc = myTodayDoc() || {};
+    const live = doc.daily && doc.daily.text;
     const queue = doc.dailyQueue;
     const queuedPending = queue && queue.showAt > Date.now();
+    const fieldVal = S.dailyDraft || live || "";
     P.className = "panel daily";
     keepFocus(() => {
       P.innerHTML = `<div class="desk-col">
           <div class="desk-col-head"><button type="button" class="av-btn" data-act="open-settings" aria-label="Change your avatar">${badge(mySeat())}</button><label class="lbl" for="in-daily">Today's update</label></div>
-          <textarea id="in-daily" class="field" maxlength="1500" rows="4" aria-label="Today's update">${esc(S.dailyDraft || "")}</textarea>
+          <textarea id="in-daily" class="field" maxlength="1500" rows="4" aria-label="Today's update">${esc(fieldVal)}</textarea>
           <div class="daily-actions">
-            <button type="button" class="btn primary small" data-act="daily-post">${IC.enter} Post now</button>
+            <button type="button" class="btn primary small" data-act="daily-post">${IC.enter} ${live ? "Save" : "Post now"}</button>
             <button type="button" class="mini-btn clock-btn" data-act="daily-queue-open" aria-label="Queue for a later time" title="Queue for later">${IC.clock}</button>
           </div>
-          ${queuedPending ? `<p class="dq-chip">Queued for ${fmtTime(queue.showAt)} — “${esc(queue.text.length > 70 ? queue.text.slice(0, 70) + "…" : queue.text)}”<button type="button" class="mini-btn" data-act="daily-queue-cancel" aria-label="Cancel the queued update">${IC.close}</button></p>` : ""}
+          ${queuedPending ? `<div class="dq-row-chip">
+              <button type="button" class="dq-chip" data-act="daily-queue-edit">Queued for ${fmtTime(queue.showAt)} — “${esc(queue.text.length > 70 ? queue.text.slice(0, 70) + "…" : queue.text)}”</button>
+              <button type="button" class="mini-btn" data-act="daily-queue-cancel" aria-label="Cancel the queued update">${IC.close}</button>
+            </div>` : ""}
         </div>`;
     });
   }
@@ -1185,10 +1196,11 @@ body:not(.show-map) .page-map, body:not(.show-map) .page-cities { display: none;
         <p class="muted" style="margin:6px 0 0;font-size:.85em">If that time has already passed today, it'll show tomorrow instead.</p></div>
       <div class="who-row"><button type="button" class="btn primary" data-act="daily-queue-set">${IC.clock} Queue it</button></div>`;
   }
+  // Editing an already-posted update keeps its original posted time; only a first post sets a fresh one.
   function postDaily(text) {
     const t = (text || "").trim();
     if (!t || !canWrite()) return;
-    saveDay((d) => { d.daily = { text: t.slice(0, 1500), postedAt: Date.now() }; delete d.dailyQueue; }, { panel: true });
+    saveDay((d) => { const postedAt = (d.daily && d.daily.postedAt) || Date.now(); d.daily = { text: t.slice(0, 1500), postedAt }; }, { panel: true });
     S.dailyDraft = ""; LS.set("daybook.dailyDraft", "");
     const ta = $("#in-daily"); if (ta) ta.value = "";
     SFX.thud();
@@ -1983,9 +1995,16 @@ body:not(.show-map) .page-map, body:not(.show-map) .page-cities { display: none;
   document.addEventListener("pointercancel", () => endDrag(true));
 
   /* ---------- history ---------- */
+  // Cancels any in-progress close animation (and its pending hide) on a scrim being reopened, so a quick close-then-reopen can't un-hide it late.
+  function openScrim(el) {
+    if (!el) return;
+    clearTimeout(S.sheetCloseTimer);
+    el.classList.remove("closing");
+    el.hidden = false;
+  }
   async function openHistory() {
     S.history.open = true;
-    $("#historyScrim").hidden = false;
+    openScrim($("#historyScrim"));
     renderHistory();
     await loadHistory();
   }
@@ -2183,8 +2202,8 @@ body:not(.show-map) .page-map, body:not(.show-map) .page-cities { display: none;
     const p = S.prefs;
     const others = SEAT_KEYS.filter((k) => k !== mySeat());
     const order = viewOrder();
-    $("#settings").innerHTML = `<div class="sheet-head"><h2 id="settingsTitle">My view</h2>
-        <button class="icon-btn" type="button" data-act="close" aria-label="Close My view">${IC.close}</button></div>
+    $("#settings").innerHTML = `<div class="sheet-head"><h2 id="settingsTitle">Settings</h2>
+        <button class="icon-btn" type="button" data-act="close" aria-label="Close settings">${IC.close}</button></div>
       ${mySeat() && canWrite() ? `<div class="group"><span class="lbl">My avatar</span>
           ${window.DaybookAvatar ? avatarBuilderHTML() : `<span class="muted">The avatar maker didn't load. Reload the page to try again.</span>`}</div>` : ""}
       <div class="group"><span class="lbl">Positions</span>
@@ -2202,9 +2221,13 @@ body:not(.show-map) .page-map, body:not(.show-map) .page-cities { display: none;
 
   /* ---------- events ---------- */
   function closeSheets() {
-    $("#historyScrim").hidden = true; $("#settingsScrim").hidden = true; $("#queueScrim").hidden = true;
     closeBoardZoom();
+    const open = ["#historyScrim", "#settingsScrim", "#queueScrim"].map($).filter((s) => s && !s.hidden);
     S.history.open = false; S.settingsOpen = false; S.confirmLeave = false; S.swapPick = null; S.queueOpen = false; S.dailySwapPick = null;
+    if (!open.length) return;
+    open.forEach((s) => s.classList.add("closing"));
+    clearTimeout(S.sheetCloseTimer);
+    S.sheetCloseTimer = setTimeout(() => open.forEach((s) => { s.hidden = true; s.classList.remove("closing"); }), 170);
   }
   document.addEventListener("click", (ev) => {
     const b = ev.target.closest("[data-act]");
@@ -2213,20 +2236,35 @@ body:not(.show-map) .page-map, body:not(.show-map) .page-cities { display: none;
     if (act === "scrim") { if (ev.target === b) closeSheets(); return; }
     switch (act) {
       case "open-history": openHistory(); break;
-      case "open-settings": S.settingsOpen = true; $("#settingsScrim").hidden = false; renderSettings(); break;
+      case "open-settings": S.settingsOpen = true; openScrim($("#settingsScrim")); renderSettings(); break;
       case "close": closeSheets(); break;
-      case "page": { const p = b.dataset.page === "daily" ? "daily" : "board"; if (p !== S.page) { S.page = p; LS.set("daybook.page", p); renderAll(); } break; }
+      case "page": {
+        const p = b.dataset.page === "daily" ? "daily" : "board";
+        if (p !== S.page) { S.page = p; LS.set("daybook.page", p); renderAll(); animateSwap($("#board")); animateSwap($("#panel")); }
+        break;
+      }
       case "daily-post": { const ta = $("#in-daily"); if (ta && ta.value.trim()) postDaily(ta.value); break; }
       case "daily-queue-open": {
         const ta = $("#in-daily");
         if (ta) { S.dailyDraft = ta.value; LS.set("daybook.dailyDraft", ta.value); }
         if (!(S.dailyDraft || "").trim()) { toast("Write your update first."); break; }
-        S.queueOpen = true; $("#queueScrim").hidden = false; renderQueueSheet();
+        S.queueOpen = true; openScrim($("#queueScrim")); renderQueueSheet();
         setTimeout(() => $("#in-daily-time")?.focus(), 50);
         break;
       }
       case "daily-queue-set": queueDaily(); break;
       case "daily-queue-cancel": cancelDailyQueue(); break;
+      case "daily-queue-edit": {
+        const doc = myTodayDoc(), q = doc && doc.dailyQueue;
+        if (!q) break;
+        S.dailyDraft = q.text; LS.set("daybook.dailyDraft", q.text);
+        const d = new Date(q.showAt);
+        S.dailyQTime = String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0");
+        renderPanel();
+        S.queueOpen = true; openScrim($("#queueScrim")); renderQueueSheet();
+        setTimeout(() => $("#in-daily-time")?.focus(), 50);
+        break;
+      }
       case "daily-swap": {
         const k = b.dataset.seat;
         if (!S.dailySwapPick || S.dailySwapPick === k) { S.dailySwapPick = S.dailySwapPick === k ? null : k; renderSettings(); break; }
