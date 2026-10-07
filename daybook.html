@@ -647,8 +647,8 @@ button.dwin-text:hover { background: color-mix(in srgb, var(--fg) 7%, transparen
 .cork-head { justify-content: center; }
 .face.front .name-tag.topic-tag { background: rgba(0, 0, 0, .32); border-radius: 6px; padding: 4px 14px; }
 .panel.cork { grid-template-columns: minmax(0, 1fr); }
-.cnote { padding-top: calc(var(--nw) * .3); outline: none; }
-.note-av { position: absolute; left: calc(var(--nw) * .08); top: calc(var(--nw) * .2); width: max(16px, calc(var(--nw) * .15)); height: max(16px, calc(var(--nw) * .15)); }
+.cnote { padding-top: calc(var(--nw) * .24); outline: none; }
+.note-av { position: absolute; left: calc(var(--nw) * .05); top: calc(var(--nw) * .03); width: max(19px, calc(var(--nw) * .18)); height: max(19px, calc(var(--nw) * .18)); }
 .note-av .av { width: 100%; height: 100%; font-size: .7em; }
 .quad[data-topic] .cork.drop-target { outline: none; }
 </style>
@@ -967,10 +967,10 @@ button.dwin-text:hover { background: color-mix(in srgb, var(--fg) 7%, transparen
       document.querySelectorAll(`.av-th[data-av="${seat}"]`).forEach((el) => { el.classList.remove("mo-bounce"); el.classList.add("mo-sway"); });
     }, ms + 20);
   }
-  function badge(key) {
+  function badge(key, opts = {}) {
     const m = holderOf(key);
     const a = (m && m.avatar) || {};
-    if (a.kind === "thumbs") { const h = avatarHTML(a, { seed: key }); if (h) return h; }
+    if (a.kind === "thumbs") { const h = avatarHTML(a, { seed: key, still: opts.still }); if (h) return h; }
     const emoji = AVATAR_EMOJI.includes(a.emoji) ? a.emoji : "";
     const bg = AVATAR_BG[a.bg];
     const cls = ["av", bg ? "custom" : "", emoji ? "emoji" : ""].join(" ");
@@ -1442,7 +1442,7 @@ button.dwin-text:hover { background: color-mix(in srgb, var(--fg) 7%, transparen
     const style = `left:min(${n.x}%, 100% - var(--nw));top:${n.y}%;z-index:${n.z || 1};--rot:${n.rot || 0}deg;--paper:${paper}`;
     const mine = n.authorId === S.myId;
     const m = S.members.find((x) => x.id === n.authorId);
-    const av = `<span class="note-av">${badge(m ? m.seat : "")}</span>`;
+    const av = `<span class="note-av">${badge(m ? m.seat : "", { still: true })}</span>`;
     const body = `${av}${esc(n.text || "")}`;
     if (mine) return `<button type="button" class="note cnote mine" data-note="${esc(n.id)}" style="${style}" aria-label="Your note: ${esc(n.text || "empty")}. Drag to move it, or to the desk to take it back.">${body}</button>`;
     return `<div class="note cnote" style="${style}">${body}</div>`;
