@@ -44,6 +44,7 @@
   --fs: 15px;
   --note-scale: 1;
   --radius: 12px;
+  --dwin-bg: #f5f5f5;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
@@ -56,6 +57,7 @@
     --back: #2a2922; --back-ink: #e9e3d5; --back-line: rgba(255, 240, 210, .12); --hole: rgba(0, 0, 0, .75);
     --manila: #6b5a33; --manila-ink: #f3e6c4;
     --map-ca: #2a3d2f; --wood: #4d6e53;
+    --dwin-bg: #242424;
     color-scheme: dark;
   }
 }
@@ -69,6 +71,7 @@
   --back: #2a2922; --back-ink: #e9e3d5; --back-line: rgba(255, 240, 210, .12); --hole: rgba(0, 0, 0, .75);
   --manila: #6b5a33; --manila-ink: #f3e6c4;
   --map-ca: #2a3d2f; --wood: #4d6e53;
+  --dwin-bg: #242424;
   color-scheme: dark;
 }
 
@@ -528,18 +531,24 @@ body:not(.show-map) .page-map, body:not(.show-map) .page-cities { display: none;
   .scrim.closing .sheet { animation: slide-out .16s ease-in forwards; }
   @keyframes scrim-out { to { opacity: 0; } }
   @keyframes slide-out { to { transform: translateX(24px); opacity: 0; } }
-  #board.page-anim, #panel.page-anim { animation: page-in .22s ease-out; }
-  @keyframes page-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+  /* Board and Daily Update sit side by side (Board left, Daily right), so switching between them slides; the desk panel just fades in place. */
+  #board.page-anim-right { animation: slide-from-right .22s ease-out; }
+  #board.page-anim-left { animation: slide-from-left .22s ease-out; }
+  #panel.page-fade { animation: panel-fade .2s ease-out; }
+  @keyframes slide-from-right { from { opacity: 0; transform: translateX(28px); } to { opacity: 1; transform: none; } }
+  @keyframes slide-from-left { from { opacity: 0; transform: translateX(-28px); } to { opacity: 1; transform: none; } }
+  @keyframes panel-fade { from { opacity: 0; } to { opacity: 1; } }
 }
 
-/* The desk's open/close handle: a floating up-arrow button at bottom-center, hidden while the desk is open (the X inside it closes instead). */
+/* The desk's open/close handle: a floating up-arrow at bottom-center (just the icon, a soft halo, no button chrome), hidden while the desk is open (the X inside it closes instead). */
 .desk-fab {
   position: fixed; left: 50%; bottom: calc(14px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); z-index: 60;
-  width: 44px; height: 44px; border-radius: 50%; border: 1px solid var(--line); background: var(--surface); color: var(--muted);
-  display: grid; place-items: center; box-shadow: 0 6px 16px -6px rgba(0, 0, 0, .35);
+  width: 44px; height: 44px; border: 0; background: transparent; color: var(--accent);
+  display: grid; place-items: center;
+  filter: drop-shadow(0 0 7px color-mix(in srgb, var(--accent) 60%, transparent));
 }
-.desk-fab:hover { color: var(--fg); border-color: var(--accent); }
-.desk-fab svg { width: 22px; height: 22px; }
+.desk-fab:hover { color: var(--fg); }
+.desk-fab svg { width: 26px; height: 26px; }
 .app:not(.desk-closed) .desk-fab { display: none; }
 
 /* Daily Update page: four equal windows at N/W/E/S, touching corner to corner, with a small canary in the gap. */
@@ -550,7 +559,7 @@ body:not(.show-map) .page-map, body:not(.show-map) .page-cities { display: none;
   gap: 0; height: 100%; min-height: 0; position: relative;
 }
 .dwin {
-  position: relative; background: var(--surface); border: 1px solid var(--line); border-radius: 6px;
+  position: relative; background: var(--dwin-bg); border: 1px solid var(--line); border-radius: 6px;
   box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .03); padding: 12px 12px 26px; box-sizing: border-box; min-width: 0; min-height: 0;
   display: flex; flex-direction: column; gap: 6px;
 }
@@ -566,6 +575,8 @@ body:not(.show-map) .page-map, body:not(.show-map) .page-cities { display: none;
 .dwin-body::-webkit-scrollbar-track { background: transparent; }
 .dwin-body::-webkit-scrollbar-thumb { background: var(--line); border-radius: 3px; }
 .dwin-text { margin: 0; overflow-wrap: anywhere; white-space: pre-wrap; }
+button.dwin-text { display: block; width: 100%; text-align: left; border: 0; background: transparent; font: inherit; color: inherit; padding: 2px 4px; margin: -2px -4px; border-radius: 4px; cursor: pointer; }
+button.dwin-text:hover { background: color-mix(in srgb, var(--fg) 7%, transparent); }
 .dwin-empty { margin: 0; }
 .dwin-time { position: absolute; right: 12px; bottom: 8px; font-size: .76em; color: var(--muted); }
 @media (max-width: 720px) {
@@ -574,7 +585,7 @@ body:not(.show-map) .page-map, body:not(.show-map) .page-cities { display: none;
 }
 
 .canary-wrap { grid-area: c; display: flex; align-items: center; justify-content: center; min-width: 0; min-height: 0; }
-.canary { position: relative; border: 0; background: transparent; padding: 0; width: clamp(40px, 70%, 64px); aspect-ratio: 1; cursor: pointer; }
+.canary { position: relative; border: 0; background: transparent; padding: 0; width: clamp(52px, 91%, 83px); aspect-ratio: 1; cursor: pointer; }
 .canary-svg { width: 100%; height: 100%; display: block; overflow: visible; }
 .cn-head { transform: rotate(var(--rot, 0deg)); transform-origin: 56px 46px; transition: transform .12s ease-out; }
 .cn-pupil { transform: translate(var(--ex, 0px), var(--ey, 0px)); transition: transform .12s ease-out; }
@@ -594,16 +605,16 @@ body:not(.show-map) .page-map, body:not(.show-map) .page-cities { display: none;
   @keyframes cn-note { 0% { opacity: 0; transform: translateY(4px) scale(.8); } 25% { opacity: 1; } 100% { opacity: 0; transform: translateY(-22px) scale(1.15); } }
 }
 
-/* Daily Update desk: one field (half width, full height), posted now or queued for later via the clock button's modal. */
+/* Daily Update desk: one field (75% width, full height), posted now or queued for later via the clock button's modal. */
 .panel.daily { grid-template-columns: minmax(0, 1fr); }
 .daily-compose { display: flex; gap: 10px; flex: 1; min-height: 0; }
-#in-daily { width: 50%; flex: none; height: 100%; resize: none; background: transparent; border-color: var(--line); }
+#in-daily { width: 75%; flex: none; height: 100%; resize: none; background: transparent; border-color: var(--line); }
 #in-daily:focus { border-color: var(--accent); background: transparent; }
 .daily-actions { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; }
 .clock-btn { border: 1px solid var(--line); }
 .clock-btn:hover { border-color: var(--accent); }
 @media (max-width: 560px) { .daily-compose { flex-direction: column; } #in-daily { width: 100%; height: 120px; } .daily-actions { flex-direction: row; } }
-.dq-row-chip { display: flex; align-items: center; gap: 4px; align-self: flex-start; }
+.dq-row-chip { display: flex; align-items: center; gap: 4px; align-self: flex-end; }
 .dq-chip { background: var(--surface-2); border: 0; border-radius: 999px; padding: 5px 12px; font-size: .9em; margin: 0; cursor: pointer; font-family: inherit; color: inherit; text-align: left; }
 .dq-chip:hover { background: var(--line); }
 </style>
@@ -666,7 +677,7 @@ body:not(.show-map) .page-map, body:not(.show-map) .page-cities { display: none;
     <section id="panel" class="panel" aria-label="My desk"></section>
   </div>
   <button type="button" class="desk-fab" data-act="desk-toggle" id="addBtn" aria-pressed="false" aria-label="Open your desk">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 15l6-6 6 6"/></svg>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
   </button>
 </div>
 
@@ -985,11 +996,12 @@ body:not(.show-map) .page-map, body:not(.show-map) .page-cities { display: none;
     }
   }
   // Replays a short fade/rise-in animation on an element whose content just changed wholesale (a page switch).
-  function animateSwap(el) {
+  // Replays a named CSS animation on an element whose content just changed wholesale (a page switch).
+  function playAnim(el, cls) {
     if (!el) return;
-    el.classList.remove("page-anim");
+    el.classList.remove("page-anim-right", "page-anim-left", "page-fade");
     void el.offsetWidth;
-    el.classList.add("page-anim");
+    el.classList.add(cls);
   }
   function renderTop() {
     const k = myToday();
@@ -1109,8 +1121,11 @@ body:not(.show-map) .page-map, body:not(.show-map) .page-cities { display: none;
   }
   const CANARY_SVG = `<svg class="canary-svg" viewBox="0 0 100 100" aria-hidden="true">
     <defs><linearGradient id="cnBody" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#6fe0cf"/><stop offset="1" stop-color="#2a9d94"/></linearGradient></defs>
-    <ellipse class="cn-nest-base" cx="54" cy="87" rx="37" ry="9" fill="#a3764a"/>
-    <path class="cn-nest-twigs" d="M19 86q6-7 13-2q6-8 13 1q6-8 13 0q6-8 13 1q6-7 13-1" stroke="#7c5533" stroke-width="2.6" fill="none" stroke-linecap="round"/>
+    <ellipse class="cn-nest-shadow" cx="54" cy="97" rx="36" ry="5" fill="rgba(0,0,0,.14)"/>
+    <ellipse class="cn-nest-base" cx="54" cy="90" rx="46" ry="16" fill="#8a6239"/>
+    <path class="cn-nest-twigs-back" d="M10 88q8-11 17-3q8-12 17 1q8-12 17 0q8-12 17 1q8-11 17-2" stroke="#6b4a28" stroke-width="3.2" fill="none" stroke-linecap="round"/>
+    <ellipse class="cn-nest-inner" cx="54" cy="85" rx="37" ry="10" fill="#6b4a28"/>
+    <path class="cn-nest-twigs-front" d="M14 95q9-7 18-1q9-8 18 1q9-8 18 0q9-8 18 1q8-7 16 1" stroke="#a3764a" stroke-width="2.6" fill="none" stroke-linecap="round"/>
     <ellipse class="cn-tail" cx="26" cy="68" rx="12" ry="6" transform="rotate(-24 26 68)" fill="#2a9d94"/>
     <ellipse class="cn-body" cx="54" cy="62" rx="28" ry="24" fill="url(#cnBody)"/>
     <ellipse class="cn-belly" cx="54" cy="70" rx="15" ry="11" fill="#eafdf6"/>
@@ -1127,8 +1142,13 @@ body:not(.show-map) .page-map, body:not(.show-map) .page-cities { display: none;
     const m = holderOf(key), name = SEAT_NAME[key];
     const head = `<div class="dwin-head">${badge(key)}<span class="dwin-name">${esc(name)}</span></div>`;
     if (!m) return `<section class="dwin ${pos}" data-key="${key}">${head}<div class="dwin-body"><p class="dwin-empty muted">Hasn't joined yet.</p></div></section>`;
+    const isMe = m.id === S.myId;
     const vis = visibleDaily(teammateDayDoc(key));
-    const body = vis ? `<p class="dwin-text">${esc(vis.text)}</p>` : `<p class="dwin-empty muted">No update yet today.</p>`;
+    const body = !vis
+      ? `<p class="dwin-empty muted">No update yet today.</p>`
+      : isMe && canWrite()
+        ? `<button type="button" class="dwin-text" data-act="daily-edit" aria-label="Edit your update">${esc(vis.text)}</button>`
+        : `<p class="dwin-text">${esc(vis.text)}</p>`;
     return `<section class="dwin ${pos}" data-key="${key}" aria-label="${esc(name)}'s daily update">
       ${head}
       <div class="dwin-body">${body}</div>
@@ -1185,7 +1205,7 @@ body:not(.show-map) .page-map, body:not(.show-map) .page-cities { display: none;
     const live = doc.daily && doc.daily.text;
     const queue = doc.dailyQueue;
     const queuedPending = queue && queue.showAt > Date.now();
-    const fieldVal = S.dailyDraft || live || "";
+    const fieldVal = S.dailyDraft || "";
     P.className = "panel daily";
     keepFocus(() => {
       P.innerHTML = `<div class="desk-col">
@@ -2257,10 +2277,23 @@ body:not(.show-map) .page-map, body:not(.show-map) .page-cities { display: none;
       case "close": closeSheets(); break;
       case "page": {
         const p = b.dataset.page === "daily" ? "daily" : "board";
-        if (p !== S.page) { S.page = p; LS.set("daybook.page", p); renderAll(); animateSwap($("#board")); animateSwap($("#panel")); }
+        if (p !== S.page) {
+          S.page = p; LS.set("daybook.page", p); renderAll();
+          playAnim($("#board"), p === "daily" ? "page-anim-right" : "page-anim-left");
+          playAnim($("#panel"), "page-fade");
+        }
         break;
       }
       case "daily-post": { const ta = $("#in-daily"); if (ta && ta.value.trim()) postDaily(ta.value); break; }
+      case "daily-edit": {
+        const vis = visibleDaily(myTodayDoc());
+        if (!vis) break;
+        S.dailyDraft = vis.text; LS.set("daybook.dailyDraft", vis.text);
+        renderPanel();
+        if (!S.deskOpen) { S.deskOpen = true; applyDesk(); }
+        setTimeout(() => $("#in-daily")?.focus(), 50);
+        break;
+      }
       case "daily-queue-open": {
         const ta = $("#in-daily");
         if (ta) { S.dailyDraft = ta.value; LS.set("daybook.dailyDraft", ta.value); }
