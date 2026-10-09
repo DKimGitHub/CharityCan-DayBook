@@ -2739,7 +2739,7 @@ button.dwin-text:hover { background: color-mix(in srgb, var(--fg) 7%, transparen
       case "page": {
         const p = PAGE_ORDER.includes(b.dataset.page) ? b.dataset.page : "board";
         if (p === S.page) {
-          if (!S.deskOpen) { S.deskOpen = true; applyDesk(); SFX.whoosh(true); }
+          S.deskOpen = !S.deskOpen; applyDesk(); SFX.whoosh(S.deskOpen);
           break;
         }
         const dir = PAGE_ORDER.indexOf(p) > PAGE_ORDER.indexOf(S.page) ? "page-anim-right" : "page-anim-left";
