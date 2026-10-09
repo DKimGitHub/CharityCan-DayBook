@@ -357,9 +357,6 @@ body:not(.show-map) .page-map, body:not(.show-map) .page-cities { display: none;
 .mini-btn { border: 0; background: transparent; color: var(--muted); border-radius: 6px; padding: 3px 6px; display: inline-flex; align-items: center; gap: 4px; font-size: .8em; font-weight: 700; }
 .mini-btn:hover, .mini-btn[aria-pressed="true"] { color: var(--accent); background: var(--surface-2); }
 .mini-btn svg { width: 14px; height: 14px; }
-.posted { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; max-height: 40%; overflow: auto; flex: none; }
-.posted li { display: flex; gap: 4px; align-items: center; }
-.posted .field { padding: 5px 8px; font-size: .92em; }
 .upd-box { position: relative; flex: 1; display: flex; min-height: 70px; }
 .upd-box #in-update { flex: 1; padding-right: 36px; background: transparent; border-color: var(--line); }
 .upd-box #in-update:focus { border-color: var(--accent); background: transparent; }
@@ -457,6 +454,19 @@ body:not(.show-map) .page-map, body:not(.show-map) .page-cities { display: none;
 .chip:disabled { opacity: .45; cursor: default; }
 .search { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
 .search .field { flex: 1; min-width: 14ch; width: auto; background: var(--surface); }
+.chat-log { display: flex; flex-direction: column; gap: 10px; overflow-y: auto; flex: 1; min-height: 0; padding: 2px 2px 4px; }
+.chat-msg { display: flex; gap: 8px; align-items: flex-start; }
+.chat-msg.mine { flex-direction: row-reverse; }
+.chat-av { flex: none; width: 28px; height: 28px; display: block; }
+.chat-av :is(svg, img) { width: 100%; height: 100%; display: block; }
+.chat-bubble { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 8px 10px; max-width: 86%; min-width: 0; }
+.chat-msg.mine .chat-bubble { background: color-mix(in srgb, var(--accent) 10%, var(--surface)); }
+.chat-meta { display: flex; align-items: baseline; gap: 6px; margin-bottom: 2px; }
+.chat-name { font-weight: 700; font-size: .88em; }
+.chat-time { color: var(--faint); font-size: .76em; }
+.chat-text { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+.chat-edit textarea { min-height: 60px; resize: vertical; }
+.chat-edit-actions { display: flex; gap: 6px; justify-content: flex-end; margin-top: 6px; }
 .drawer { position: relative; overflow-x: auto; overflow-y: hidden; padding: 40px 12px 18px; margin-inline: -8px; outline: none; border-radius: var(--radius); background: color-mix(in srgb, var(--fg) 6%, transparent); scrollbar-width: thin; }
 .drawer:focus-visible { box-shadow: inset 0 0 0 2px var(--accent); }
 .drawer-track { position: relative; height: 420px; }
@@ -790,6 +800,8 @@ button.dwin-text:hover { background: color-mix(in srgb, var(--fg) 7%, transparen
   const CORK_TOPIC_NAME = Object.fromEntries(CORK_TOPICS);
   const CORK_TOPIC_KEYS = CORK_TOPICS.map(([k]) => k);
   const MAX_CORK_NOTES = 60;
+  // The live messages query is capped so the window doesn't grow unbounded; old messages simply age out of the feed.
+  const MAX_MESSAGES = 500;
   // Board, Daily Update and Cork sit left to right, so switching pages slides toward whichever side the target is on.
   const PAGE_ORDER = ["board", "daily", "cork"];
 
@@ -798,9 +810,10 @@ button.dwin-text:hover { background: color-mix(in srgb, var(--fg) 7%, transparen
     members: [], subs: {}, days: {}, local: {},
     prefs: (() => { const p = { ...DEFAULT_PREFS, ...LS.get("daybook.prefs", {}) }; p.hidden = (p.hidden || []).filter((k) => SEAT_NAME[k]); return p; })(),
     drag: null, deskDrag: null, pendingRender: false, deskOpen: false, bounce: {}, bounceTimers: {}, seenAt: {},
-    updDraft: LS.get("daybook.updDraft", "") || "",
+    msgDraft: LS.get("daybook.msgDraft", "") || "", msgEditing: null,
+    messages: [],
     swapPick: null, confirmLeave: false, metaSyncing: false, settingsOpen: false,
-    history: { open: false, days: [], q: "", loading: false, selDate: null, token: 0, who: null },
+    history: { open: false, days: [], q: "", loading: false, selDate: null, token: 0, who: null, tab: "notes" },
     page: PAGE_ORDER.includes(LS.get("daybook.page", "board")) ? LS.get("daybook.page", "board") : "board",
     dailyDraft: LS.get("daybook.dailyDraft", "") || "",
     dailyQTime: "", queueOpen: false, dailySwapPick: null,
@@ -1087,7 +1100,7 @@ button.dwin-text:hover { background: color-mix(in srgb, var(--fg) 7%, transparen
   }
   function nameTagHTML(key, opts = {}) {
     const name = SEAT_NAME[key];
-    const upd = (opts.update || "").trim();
+    const upd = ((opts.msg && opts.msg.text) || "").trim();
     const you = "";
     if (!upd) return `<span class="name-tag">${badge(key)}<span class="name">${esc(name)}${you}</span></span>`;
     const peek = key === mySeat() && Date.now() < (S.bubbleUntil || 0) ? " peek" : "";
@@ -1114,7 +1127,7 @@ button.dwin-text:hover { background: color-mix(in srgb, var(--fg) 7%, transparen
     let hint = "";
     if (days === undefined && !isMe) hint = "<span>Loading…</span>";
     return pieceHTML(key,
-      `<div class="q-head">${nameTagHTML(key, { isMe, update: doc && doc.update, date: doc && doc.date })}</div>
+      `<div class="q-head">${nameTagHTML(key, { isMe, msg: latestMessageFrom(m.id), date: doc && doc.date })}</div>
        ${corkHTML(notes, { own, react: canWrite() && !!mySeat(), hint, label: `${name}'s notes` })}`,
       isMe ? "mine" : "");
   }
@@ -1615,13 +1628,12 @@ button.dwin-text:hover { background: color-mix(in srgb, var(--fg) 7%, transparen
     const today = myTodayDoc();
     const all = notesOf(today);
     const notes = all.filter((n) => !placed(n));
-    const posted = postedLines(today);
+    const mine = myMessages();
     P.className = "panel";
     keepFocus(() => {
       P.innerHTML = `<div class="desk-col">
-          <div class="desk-col-head"><button type="button" class="av-btn" data-act="open-settings" aria-label="Change your avatar">${badge(mySeat())}</button><label class="lbl" for="in-update">Message</label><span class="grow"></span>${posted.length ? `<button type="button" class="mini-btn" data-act="posted-toggle" aria-pressed="${!!S.editPosted}" aria-label="Edit posted messages">${IC.pencil}<span>${posted.length}</span></button>` : ""}</div>
-          ${S.editPosted && posted.length ? `<ol class="posted" aria-label="Posted today">${posted.map((l, i) => `<li><input class="field" id="posted-${i}" data-posted="${i}" maxlength="500" value="${esc(l)}" aria-label="Posted line ${i + 1}"><button type="button" class="mini-btn" data-act="posted-del" data-i="${i}" aria-label="Remove line ${i + 1}">${IC.close}</button></li>`).join("")}</ol>` : ""}
-          <div class="upd-box"><textarea id="in-update" class="field" maxlength="1500" aria-label="Message">${esc(S.updDraft || "")}</textarea><button type="button" class="upd-send" data-act="upd-submit" aria-label="Post message">${IC.enter}</button></div>
+          <div class="desk-col-head"><button type="button" class="av-btn" data-act="open-settings" aria-label="Change your avatar">${badge(mySeat())}</button><label class="lbl" for="in-update">Message</label><span class="grow"></span>${mine.length ? `<button type="button" class="mini-btn" data-act="open-history" data-tab="messages" aria-label="See your messages in history">${IC.pencil}<span>${mine.length}</span></button>` : ""}</div>
+          <div class="upd-box"><textarea id="in-update" class="field" maxlength="1500" aria-label="Message">${esc(S.msgDraft || "")}</textarea><button type="button" class="upd-send" data-act="upd-submit" aria-label="Post message">${IC.enter}</button></div>
           <div class="quick" role="group" aria-label="Quick messages">${QUICK_UPDATES.map(([l, t], i) => `<button type="button" data-act="quick" data-i="${i}">${esc(l)}</button>`).join("")}</div>
         </div>
         <div class="desk-col">
@@ -2069,26 +2081,76 @@ button.dwin-text:hover { background: color-mix(in srgb, var(--fg) 7%, transparen
     SFX.pops(made.length);
     if (items.length > room) toast(`Made ${room} notes. A day holds up to ${MAX_NOTES}.`);
   }
-  // Each posted update adds a line to today's update on the board; the desk box clears for the next one.
-  const postedLines = (d) => ((d && d.update) || "").split("\n").map((l) => l.trim()).filter(Boolean);
-  function setPosted(fn, opts) {
-    saveDay((d) => { const lines = postedLines(d); fn(lines); d.update = lines.map((l) => l.trim()).filter(Boolean).join("\n"); }, opts);
+  // Messages live in their own shared collection (one document per message), the same way cork notes do,
+  // so a chronological, interleaved history across everyone can be shown like a chat log.
+  let msgChain = Promise.resolve();
+  const msgPending = new Set(), msgPendingDelete = new Set();
+  // Snapshots from the db are frozen, so every message is cloned before it's mutated (same rule cork notes follow).
+  function applyMessagesSnapshot(docs) {
+    const merged = [], seen = new Set();
+    for (const m of S.messages) { if (msgPending.has(m.id)) { merged.push(m); seen.add(m.id); } }
+    for (const d of docs) {
+      if (seen.has(d.id) || msgPendingDelete.has(d.id)) continue;
+      merged.push(clone(d.data()));
+      seen.add(d.id);
+    }
+    S.messages = merged;
   }
-  function postUpdate(text) {
-    const t = (text || "").trim();
+  const myMessages = () => S.messages.filter((m) => m.authorId === S.myId);
+  // What shows in someone's speech bubble on the board is simply their most recent message.
+  function latestMessageFrom(authorId) {
+    let best = null;
+    for (const m of S.messages) if (m.authorId === authorId && (!best || m.createdAt > best.createdAt)) best = m;
+    return best;
+  }
+  function postMessage(text) {
+    const t = (text || "").trim().slice(0, 1500);
     if (!t || !canWrite()) return false;
-    saveDay((d) => { const cur = (d.update || "").trim(); d.update = (cur ? cur + "\n" + t : t).slice(-1500); }, { panel: true });
+    const m = { id: rid(), authorId: S.myId, text: t, createdAt: Date.now() };
+    S.messages.push(m);
+    msgPending.add(m.id);
+    renderBoard();
+    if (S.history.open) renderHistory();
     SFX.thud();
     // Show the new message in my speech bubble for a few moments.
     S.bubbleUntil = Date.now() + 3500;
-    renderBoard();
     clearTimeout(S.bubbleTimer);
     S.bubbleTimer = setTimeout(() => document.querySelectorAll(".name-tag.peek").forEach((el) => el.classList.remove("peek")), 3500);
+    const snapshot = clone(m);
+    msgChain = msgChain.then(() => S.db.collection("messages").doc(m.id).set(snapshot)).then(() => msgPending.delete(m.id)).catch(writeErr);
     return true;
   }
-  function clearUpdDraft() {
-    S.updDraft = "";
-    LS.set("daybook.updDraft", "");
+  function editMessage(id, text) {
+    const cur = S.messages.find((x) => x.id === id);
+    if (!cur || cur.authorId !== S.myId) return;
+    const t = (text || "").trim().slice(0, 1500);
+    if (!t) return;
+    const m = clone(cur);
+    m.text = t;
+    m.editedAt = Date.now();
+    S.messages[S.messages.indexOf(cur)] = m;
+    msgPending.add(id);
+    S.msgEditing = null;
+    renderBoard();
+    if (S.history.open) renderHistory();
+    const snapshot = clone(m);
+    msgChain = msgChain.then(() => S.db.collection("messages").doc(id).set(snapshot)).then(() => msgPending.delete(id)).catch(writeErr);
+  }
+  function deleteMessage(id) {
+    const cur = S.messages.find((x) => x.id === id);
+    if (!cur || cur.authorId !== S.myId) return;
+    S.messages.splice(S.messages.indexOf(cur), 1);
+    msgPending.delete(id);
+    msgPendingDelete.add(id);
+    if (S.msgEditing === id) S.msgEditing = null;
+    renderBoard();
+    if (S.history.open) renderHistory();
+    SFX.trash();
+    msgChain = msgChain.then(() => S.db.collection("messages").doc(id).delete()).then(() => msgPendingDelete.delete(id)).catch(writeErr);
+  }
+  function clearMsgDraft() {
+    S.msgDraft = "";
+    LS.set("daybook.msgDraft", "");
     const ta = $("#in-update");
     if (ta) ta.value = "";
   }
@@ -2370,20 +2432,17 @@ button.dwin-text:hover { background: color-mix(in srgb, var(--fg) 7%, transparen
     if (lists.every(([, l]) => !l)) toast("Couldn't load history. Try again in a moment.");
     const byDate = {};
     for (const [k, list] of lists) for (const d of list || []) {
-      if (!d.date || !(notesOf(d).length || (d.update || "").trim())) continue;
+      if (!d.date || !notesOf(d).length) continue;
       (byDate[d.date] = byDate[d.date] || { date: d.date, seats: {} }).seats[k] = d;
     }
     H.days = Object.values(byDate);
     H.loading = false;
     renderHistory();
   }
-  // A past day reads like the list side of the board: the date (hover it for that day's update), then the notes in board order.
+  // A past day reads like the list side of the board: the date, then the notes in board order.
   function historyDayHTML(d, opts) {
-    const upd = (d.update || "").trim();
     const hl = (t) => (opts.mark ? opts.mark(t) : esc(t));
-    const when = `<span class="day-when">${esc(fmtDay(d.date, opts.withYear))}</span>`;
-    // In History the day's update is shown in full at the top, with the notes listed below.
-    const head = when + (upd ? `<p class="day-upd">${hl(upd)}</p>` : "");
+    const head = `<span class="day-when">${esc(fmtDay(d.date, opts.withYear))}</span>`;
     const rows = boardOrder(notesOf(d).filter(placed)).map((n) => `<li class="task ${opts.match && !opts.match(n) ? "dim" : ""}"><span class="chip-dot" style="--paper:${PAPERS[n.color] || PAPERS.yellow}"></span><span class="t">${hl(n.text || "")}</span></li>`).join("");
     return `<article class="day">${head}${rows ? `<ol class="tasklist">${rows}</ol>` : ""}</article>`;
   }
@@ -2410,13 +2469,64 @@ button.dwin-text:hover { background: color-mix(in srgb, var(--fg) 7%, transparen
     const mine = mySeat();
     return mine && holderOf(mine) ? mine : viewOrder().find((k) => holderOf(k)) || null;
   }
+  // A small pill pair lets History switch between the day-by-day notes drawer and the shared message log.
+  function historyTabsHTML() {
+    const H = S.history;
+    return `<div class="chips" role="group" aria-label="History view">
+      <button class="chip" type="button" data-act="hist-tab" data-tab="notes" aria-pressed="${H.tab !== "messages"}">Notes</button>
+      <button class="chip" type="button" data-act="hist-tab" data-tab="messages" aria-pressed="${H.tab === "messages"}">Messages</button>
+    </div>`;
+  }
+  function fmtMsgWhen(ms) {
+    try { return new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" }).format(new Date(ms)); }
+    catch (e) { return ""; }
+  }
+  function chatMsgHTML(m, mark) {
+    const author = S.members.find((x) => x.id === m.authorId);
+    const seat = author ? author.seat : null;
+    const name = seat ? SEAT_NAME[seat] : "Someone";
+    const mine = m.authorId === S.myId;
+    const editing = S.msgEditing === m.id;
+    const hl = (t) => (mark ? mark(t) : esc(t));
+    const body = editing
+      ? `<div class="chat-edit"><textarea class="field" id="msg-edit-ta" maxlength="1500" aria-label="Edit your message">${esc(m.text)}</textarea>
+          <div class="chat-edit-actions"><button type="button" class="btn small primary" data-act="msg-save" data-id="${esc(m.id)}">Save</button><button type="button" class="btn small" data-act="msg-cancel">Cancel</button></div></div>`
+      : `<p class="chat-text">${hl(m.text || "")}</p>`;
+    const tools = mine && !editing ? `<span class="grow"></span><button type="button" class="mini-btn" data-act="msg-edit" data-id="${esc(m.id)}" aria-label="Edit this message">${IC.pencil}</button><button type="button" class="mini-btn" data-act="msg-delete" data-id="${esc(m.id)}" aria-label="Delete this message">${IC.close}</button>` : "";
+    return `<div class="chat-msg${mine ? " mine" : ""}">
+      <span class="chat-av">${badge(seat || "", { still: true })}</span>
+      <div class="chat-bubble">
+        <div class="chat-meta"><span class="chat-name">${esc(name)}</span><span class="chat-time">${esc(fmtMsgWhen(m.createdAt))}${m.editedAt ? " · edited" : ""}</span>${tools}</div>
+        ${body}
+      </div>
+    </div>`;
+  }
+  // The Messages tab is one shared, chronological log for the whole team, not a per-person view.
+  function renderMessagesTab() {
+    const H = S.history;
+    const q = H.q.trim().toLowerCase();
+    const re = q ? new RegExp(esc(H.q.trim()).replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "gi") : null;
+    const mark = re ? (t) => esc(t).replace(re, (m) => `<mark>${m}</mark>`) : null;
+    const msgs = S.messages.filter((m) => !q || (m.text || "").toLowerCase().includes(q)).sort((a, b) => a.createdAt - b.createdAt);
+    keepFocus(() => {
+      $("#history").innerHTML = `<div class="sheet-head"><h2 id="historyTitle">History</h2>
+        <button class="icon-btn" type="button" data-act="close" aria-label="Close history">${IC.close}</button></div>
+        ${historyTabsHTML()}
+        <div class="search"><input class="field" id="in-search" type="search" placeholder="Search notes and messages" value="${esc(H.q)}" aria-label="Search notes and messages">
+          <span class="muted">${msgs.length} ${msgs.length === 1 ? "message" : "messages"}${q ? " match" : ""}</span></div>
+        <div class="chat-log" id="chatLog">${msgs.map((m) => chatMsgHTML(m, mark)).join("") || `<p class="muted">${q ? "Nothing matches that search." : team().length ? "No messages yet." : "No one has joined yet."}</p>`}</div>`;
+    });
+    const log = $("#chatLog");
+    if (log && !q) log.scrollTop = log.scrollHeight;
+  }
   function renderHistory() {
     if (!S.history.open) return;
+    if (S.history.tab === "messages") { renderMessagesTab(); return; }
     const H = S.history;
     const q = H.q.trim().toLowerCase();
     const noteMatch = (n) => (n.text || "").toLowerCase().includes(q);
     const who = historyWho();
-    const docMatch = (d) => notesOf(d).some(noteMatch) || (d.update || "").toLowerCase().includes(q);
+    const docMatch = (d) => notesOf(d).some(noteMatch);
     const days = (who ? H.days.filter((day) => day.seats[who]) : []).filter((day) => !q || docMatch(day.seats[who])).sort((a, b) => (a.date < b.date ? -1 : 1));
     const re = q ? new RegExp(esc(H.q.trim()).replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "gi") : null;
     const mark = re ? (t) => esc(t).replace(re, (m) => `<mark>${m}</mark>`) : null;
@@ -2448,6 +2558,7 @@ button.dwin-text:hover { background: color-mix(in srgb, var(--fg) 7%, transparen
     keepFocus(() => {
       $("#history").innerHTML = `<div class="sheet-head"><h2 id="historyTitle">History</h2>
         <button class="icon-btn" type="button" data-act="close" aria-label="Close history">${IC.close}</button></div>
+        ${historyTabsHTML()}
         ${filter}
         <div class="search"><input class="field" id="in-search" type="search" placeholder="Search notes and messages" value="${esc(H.q)}" aria-label="Search notes and messages">
           <span class="muted">${H.loading ? "Loading…" : `${days.length} ${days.length === 1 ? "day" : "days"}${q ? " match" : ""}`}</span></div>
@@ -2571,7 +2682,7 @@ button.dwin-text:hover { background: color-mix(in srgb, var(--fg) 7%, transparen
   function closeSheets() {
     closeBoardZoom();
     const open = ["#historyScrim", "#settingsScrim", "#queueScrim"].map($).filter((s) => s && !s.hidden);
-    S.history.open = false; S.settingsOpen = false; S.confirmLeave = false; S.swapPick = null; S.queueOpen = false; S.dailySwapPick = null;
+    S.history.open = false; S.settingsOpen = false; S.confirmLeave = false; S.swapPick = null; S.queueOpen = false; S.dailySwapPick = null; S.msgEditing = null;
     if (!open.length) return;
     open.forEach((s) => s.classList.add("closing"));
     clearTimeout(S.sheetCloseTimer);
@@ -2583,7 +2694,7 @@ button.dwin-text:hover { background: color-mix(in srgb, var(--fg) 7%, transparen
     const act = b.dataset.act;
     if (act === "scrim") { if (ev.target === b) closeSheets(); return; }
     switch (act) {
-      case "open-history": openHistory(); break;
+      case "open-history": if (b.dataset.tab) S.history.tab = b.dataset.tab; openHistory(); break;
       case "open-settings": S.settingsOpen = true; openScrim($("#settingsScrim")); renderSettings(); break;
       case "close": closeSheets(); break;
       case "page": {
@@ -2661,13 +2772,16 @@ button.dwin-text:hover { background: color-mix(in srgb, var(--fg) 7%, transparen
       case "av-batch": newBatch(); renderSettings(); break;
       case "quick": {
         const ta = $("#in-update"), text = QUICK_UPDATES[+b.dataset.i][1];
-        if (ta) { ta.value = text; S.updDraft = text; LS.set("daybook.updDraft", text); ta.focus(); ta.setSelectionRange(text.length, text.length); }
+        if (ta) { ta.value = text; S.msgDraft = text; LS.set("daybook.msgDraft", text); ta.focus(); ta.setSelectionRange(text.length, text.length); }
         SFX.tick();
         break;
       }
-      case "posted-toggle": S.editPosted = !S.editPosted; renderPanel(); break;
-      case "posted-del": { const i = +b.dataset.i; setPosted((L) => L.splice(i, 1), { panel: true }); if (!postedLines(myTodayDoc()).length) { S.editPosted = false; renderPanel(); } break; }
-      case "upd-submit": { const ta = $("#in-update"); const v = ta ? ta.value : ""; if (v.trim()) { clearUpdDraft(); postUpdate(v); } $("#in-update")?.focus(); break; }
+      case "upd-submit": { const ta = $("#in-update"); const v = ta ? ta.value : ""; if (v.trim()) { clearMsgDraft(); postMessage(v); } $("#in-update")?.focus(); break; }
+      case "hist-tab": S.history.tab = b.dataset.tab; renderHistory(); break;
+      case "msg-edit": S.msgEditing = b.dataset.id; renderHistory(); setTimeout(() => { const ta = $("#msg-edit-ta"); if (ta) { ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length); } }, 0); break;
+      case "msg-cancel": S.msgEditing = null; renderHistory(); break;
+      case "msg-save": { const ta = $("#msg-edit-ta"); if (ta && ta.value.trim()) editMessage(b.dataset.id, ta.value); else { S.msgEditing = null; renderHistory(); } break; }
+      case "msg-delete": deleteMessage(b.dataset.id); break;
       case "card-color": {
         const id = b.dataset.id, color = b.dataset.color;
         if (S.page === "cork") saveCorkNote(id, (n) => { n.color = color; });
@@ -2714,12 +2828,9 @@ button.dwin-text:hover { background: color-mix(in srgb, var(--fg) 7%, transparen
       const id = t.dataset.cardText, v = t.value;
       if (S.page === "cork") saveCorkNote(id, (n) => { n.text = v; }, { delay: 700 });
       else saveDay((d) => { const n = d.notes.find((x) => x.id === id); if (n) n.text = v; }, { delay: 700 });
-    } else if (t.dataset.posted !== undefined) {
-      const i = +t.dataset.posted, v = t.value;
-      if (v.trim()) setPosted((L) => { L[i] = v; }, { delay: 700 });
     } else if (t.id === "in-update") {
-      S.updDraft = t.value;
-      LS.set("daybook.updDraft", t.value);
+      S.msgDraft = t.value;
+      LS.set("daybook.msgDraft", t.value);
     } else if (t.id === "in-daily") {
       S.dailyDraft = t.value;
       LS.set("daybook.dailyDraft", t.value);
@@ -2730,31 +2841,16 @@ button.dwin-text:hover { background: color-mix(in srgb, var(--fg) 7%, transparen
   });
   document.addEventListener("focusout", (ev) => {
     const t = ev.target;
-    if (t.dataset && t.dataset.posted !== undefined && !t.value.trim()) {
-      const i = +t.dataset.posted;
-      setPosted((L) => L.splice(i, 1), { panel: true });
-      return;
-    }
     if (t.isConnected && t.closest && $("#panel").contains(t)) setTimeout(flushPanel, 0);
   });
   document.addEventListener("keydown", (ev) => {
     if ((ev.key === "Enter" || ev.key === " ") && ev.target.matches && ev.target.matches('.heart[data-act="heart"]')) { ev.preventDefault(); ev.target.click(); return; }
     const t = ev.target;
-    // Enter posts the update to the board; Shift+Enter adds a new line.
-    if (t.dataset && t.dataset.posted !== undefined && ev.key === "Enter") { ev.preventDefault(); t.blur(); return; }
-    // Up in an empty update box opens your last line for editing.
-    if (t.id === "in-update" && ev.key === "ArrowUp" && !t.value && postedLines(myTodayDoc()).length) {
-      ev.preventDefault();
-      S.editPosted = true; renderPanel();
-      const inputs = document.querySelectorAll("[data-posted]");
-      const last = inputs[inputs.length - 1];
-      if (last) { last.focus(); last.setSelectionRange(last.value.length, last.value.length); }
-      return;
-    }
+    // Enter posts the message to the board; Shift+Enter adds a new line.
     if (t.id === "in-update" && ev.key === "Enter" && !ev.shiftKey && !ev.isComposing) {
       ev.preventDefault();
       const v = t.value;
-      if (v.trim()) { clearUpdDraft(); postUpdate(v); }
+      if (v.trim()) { clearMsgDraft(); postMessage(v); }
       return;
     }
     if (t.classList && t.classList.contains("own") && t.dataset.note) {
@@ -2833,6 +2929,10 @@ button.dwin-text:hover { background: color-mix(in srgb, var(--fg) 7%, transparen
     db.collection("cork").onSnapshot(
       (snap) => { corkApplySnapshot(snap.docs); S.cork.ready = true; if (S.page === "cork") renderAll(); },
       () => { S.cork.notes = []; S.cork.ready = true; if (S.page === "cork") renderAll(); }
+    );
+    db.collection("messages").orderBy("createdAt", "desc").limit(MAX_MESSAGES).onSnapshot(
+      (snap) => { applyMessagesSnapshot(snap.docs); renderBoard(); if (S.history.open) renderHistory(); },
+      () => { S.messages = []; renderBoard(); if (S.history.open) renderHistory(); }
     );
   }
   boot();
