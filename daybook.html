@@ -179,7 +179,7 @@ body:not(.show-map) .page-map, body:not(.show-map) .page-cities { display: none;
 .notice { padding: 8px 14px; border-radius: 8px; background: var(--soft-bg); color: var(--soft); font-size: .9em; }
 
 /* Shared cork texture */
-.cork, .board, .face.front {
+.cork, .board, .face.front, .cork-board {
   background-color: var(--cork);
   background-image:
     radial-gradient(circle at 20% 30%, var(--cork-dot-a) 0 1px, transparent 1.6px),
@@ -196,6 +196,25 @@ body:not(.show-map) .page-map, body:not(.show-map) .page-cities { display: none;
 .board[data-layout="stack"] { grid-template-columns: minmax(0, 1fr); }
 @media (max-width: 1100px) { .board[data-layout="row"] { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 720px) { .board, .board[data-layout="row"] { grid-template-columns: minmax(0, 1fr); } }
+
+/* Cork: one continuous board; the four topics are a cosmetic overlay (cross lines and labels), not separate containers. */
+.board[data-layout="cork"] { display: flex; background: none; box-shadow: none; border-radius: 0; overflow: visible; }
+.cork-board { position: relative; width: 100%; aspect-ratio: 4 / 3; border-radius: var(--radius); overflow: hidden; container-type: size; }
+.cork-board .note { --nw: min(calc(54px + 6.5cqh), 10cqw); }
+.cork-cross { position: absolute; inset: 0; pointer-events: none; }
+.cork-cross::before, .cork-cross::after { content: ""; position: absolute; background: var(--cork-line); }
+.cork-cross::before { left: 50%; top: 0; bottom: 0; width: 1px; margin-left: -.5px; }
+.cork-cross::after { top: 50%; left: 0; right: 0; height: 1px; margin-top: -.5px; }
+.cork-qlabel {
+  position: absolute; margin: 12px; z-index: 1; pointer-events: none;
+  display: inline-flex; align-items: center; padding: 4px 14px; border-radius: 6px;
+  background: rgba(0, 0, 0, .32); color: #fff8ec; text-shadow: 0 1px 2px rgba(0, 0, 0, .55); font-weight: 700;
+}
+.cork-drop-hl {
+  position: absolute; width: 50%; height: 50%; pointer-events: none;
+  outline: 3px dashed var(--accent); outline-offset: -8px; opacity: 0; transition: left .12s, top .12s, opacity .12s;
+}
+.cork-drop-hl.show { opacity: 1; }
 
 .quad { min-width: 0; }
 .flipper { position: relative; height: 100%; }
@@ -411,6 +430,7 @@ body:not(.show-map) .page-map, body:not(.show-map) .page-cities { display: none;
   .stage .board[data-layout="grid"] { grid-template-rows: repeat(2, minmax(0, 1fr)); }
   .stage .board[data-layout="row"] { grid-auto-rows: minmax(0, 1fr); }
   .stage .board[data-layout="grid"] .cork, .stage .board[data-layout="row"] .cork { aspect-ratio: auto; flex: 1; min-height: 0; }
+  .stage .board[data-layout="cork"] .cork-board { aspect-ratio: auto; flex: 1; min-height: 0; }
   .stage .board[data-layout="stack"] .quad { min-height: 0; }
   .stage .board[data-layout="stack"] { overflow: auto; align-content: start; }
   .desk { flex: 1 1 0; min-height: 210px; z-index: 1; }
@@ -652,8 +672,6 @@ button.dwin-text:hover { background: color-mix(in srgb, var(--fg) 7%, transparen
 .dq-chip:hover { background: var(--line); }
 
 /* Cork page: a shared corkboard of post-its under four fixed topics instead of four people. */
-.cork-head { justify-content: center; }
-.face.front .name-tag.topic-tag { background: rgba(0, 0, 0, .32); border-radius: 6px; padding: 4px 14px; }
 .panel.cork { grid-template-columns: minmax(0, 1fr); }
 .cnote { padding-top: calc(var(--nw) * .24); outline: none; }
 .note-av { position: absolute; left: calc(var(--nw) * .05); top: calc(var(--nw) * .03); width: max(19px, calc(var(--nw) * .18)); height: max(19px, calc(var(--nw) * .18)); }
@@ -799,6 +817,13 @@ button.dwin-text:hover { background: color-mix(in srgb, var(--fg) 7%, transparen
   const CORK_TOPICS = [["logistics", "Admin"], ["sales", "Sales"], ["marketing", "Marketing"], ["development", "Development"]];
   const CORK_TOPIC_NAME = Object.fromEntries(CORK_TOPICS);
   const CORK_TOPIC_KEYS = CORK_TOPICS.map(([k]) => k);
+  // Cork is one continuous board; each topic simply owns a quadrant of it (2x2, left to right then top to bottom)
+  // and the dividing lines are a cosmetic overlay, not separate containers. A note's x/y stay quadrant-relative
+  // (0-100% within its own topic's quadrant, as they always were) so the shared collection's existing notes keep
+  // their exact spot; corkToBoard() converts that to the single board's own 0-100% space for rendering and drag math.
+  const corkQuadOffset = (topic) => { const i = Math.max(0, CORK_TOPIC_KEYS.indexOf(topic)); return { x: (i % 2) * 50, y: Math.floor(i / 2) * 50 }; };
+  const corkTopicAt = (bx, by) => CORK_TOPIC_KEYS[(by < 50 ? 0 : 2) + (bx < 50 ? 0 : 1)];
+  const corkToBoard = (topic, x, y) => { const o = corkQuadOffset(topic); return { x: o.x + x / 2, y: o.y + y / 2 }; };
   const MAX_CORK_NOTES = 60;
   // The live messages query is capped so the window doesn't grow unbounded; old messages simply age out of the feed.
   const MAX_MESSAGES = 500;
@@ -1352,9 +1377,14 @@ button.dwin-text:hover { background: color-mix(in srgb, var(--fg) 7%, transparen
   /* ---------- the cork page: a shared board, everyone can pin notes under any of the four topics ---------- */
   const corkMine = () => S.cork.notes.filter((n) => n.authorId === S.myId);
   const corkPlaced = (n) => typeof n.x === "number" && typeof n.y === "number" && !!n.topic;
-  function corkQuadEls() { return [...document.querySelectorAll('#board .quad[data-topic] .face.front .cork')]; }
-  function corkElFor(topic) { return document.querySelector(`#board .quad[data-topic="${CSS.escape(topic)}"] .face.front .cork`); }
-  function corkAt(ev) { return corkQuadEls().find((el) => overEl(el, ev)) || null; }
+  function corkBoardEl() { return document.querySelector("#board .cork-board"); }
+  // A synthetic "one quadrant" rect, derived from the single board's own rect, so note sizing and clamping stay
+  // exactly as they'd be for a box a quarter of the board's size (matching what topics used to be before they
+  // shared one board).
+  function corkQuadRect() {
+    const r = corkBoardEl()?.getBoundingClientRect();
+    return r ? { width: r.width / 2, height: r.height / 2 } : null;
+  }
   function corkTopZ() { return S.cork.notes.reduce((z, n) => Math.max(z, n.z || 0), 0) + 1; }
   let corkTimers = {}, corkChain = Promise.resolve();
   // Snapshots from the db are frozen, so every note is cloned before it's mutated (same rule saveDay follows for day docs).
@@ -1411,7 +1441,7 @@ button.dwin-text:hover { background: color-mix(in srgb, var(--fg) 7%, transparen
     corkChain = corkChain.then(() => S.db.collection("cork").doc(id).delete()).then(() => corkPendingDelete.delete(id)).catch(writeErr);
   }
   function pinCorkNote(id, topic, x, y) {
-    const el = corkElFor(topic), r = el && el.getBoundingClientRect();
+    const r = corkQuadRect();
     const w = noteWPct(r), h = noteHPct(r);
     const z = corkTopZ();
     saveCorkNote(id, (n) => { n.topic = topic; n.x = +clamp(x, 0, 100 - w).toFixed(2); n.y = +clamp(y, 0, Math.max(0, 100 - h)).toFixed(2); n.z = z; }, { panel: true });
@@ -1450,7 +1480,8 @@ button.dwin-text:hover { background: color-mix(in srgb, var(--fg) 7%, transparen
   }
   function cNoteHTML(n) {
     const paper = PAPERS[n.color] || PAPERS.yellow;
-    const style = `left:min(${n.x}%, 100% - var(--nw));top:${n.y}%;z-index:${n.z || 1};--rot:${n.rot || 0}deg;--paper:${paper}`;
+    const { x, y } = corkToBoard(n.topic, n.x, n.y);
+    const style = `left:min(${x}%, 100% - var(--nw));top:${y}%;z-index:${n.z || 1};--rot:${n.rot || 0}deg;--paper:${paper}`;
     const mine = n.authorId === S.myId;
     const m = S.members.find((x) => x.id === n.authorId);
     const av = `<span class="note-av">${badge(m ? m.seat : "", { still: true })}</span>`;
@@ -1458,24 +1489,28 @@ button.dwin-text:hover { background: color-mix(in srgb, var(--fg) 7%, transparen
     if (mine) return `<button type="button" class="note cnote mine" data-note="${esc(n.id)}" style="${style}" aria-label="Your note: ${esc(n.text || "empty")}. Drag to move it, or to the desk to take it back.">${body}</button>`;
     return `<div class="note cnote" style="${style}">${body}</div>`;
   }
-  function corkQuadHTML(topic) {
-    const name = CORK_TOPIC_NAME[topic];
-    const notes = S.cork.notes.filter((n) => n.topic === topic && corkPlaced(n));
-    return `<section class="quad" data-topic="${topic}">
-      <div class="flipper"><div class="face front">
-        <div class="q-head cork-head"><span class="name-tag topic-tag"><span class="name">${esc(name)}</span></span></div>
-        <div class="cork" role="group" aria-label="${esc(name)} notes">${notes.map(cNoteHTML).join("")}</div>
-      </div></div>
-    </section>`;
+  // The board itself is one shared surface (one hit-test target, one drag space); the four topics are only
+  // cosmetic labels and divider lines drawn over it.
+  function corkBoardHTML(notes, opts = {}) {
+    const labels = CORK_TOPIC_KEYS.map((t, i) => `<span class="cork-qlabel" style="left:${(i % 2) * 50}%;top:${Math.floor(i / 2) * 50}%">${esc(CORK_TOPIC_NAME[t])}</span>`).join("");
+    const hint = opts.hint ? `<div class="cork-hint">${opts.hint}</div>` : "";
+    return `<div class="cork-board" role="group" aria-label="Team cork board">
+      <div class="cork-cross" aria-hidden="true"></div>
+      ${labels}
+      <div class="cork-drop-hl" id="corkDropHl" aria-hidden="true"></div>
+      ${notes.map(cNoteHTML).join("")}
+      ${hint}
+    </div>`;
   }
   function renderCorkBoard() {
     const board = $("#board");
-    board.dataset.layout = "grid";
+    board.dataset.layout = "cork";
     if (!S.ready || !S.db) {
-      board.innerHTML = CORK_TOPIC_KEYS.map((t) => `<section class="quad"><div class="flipper"><div class="face front"><div class="q-head cork-head"><span class="name-tag topic-tag"><span class="name">${esc(CORK_TOPIC_NAME[t])}</span></span></div>${corkHTML([], { hint: S.ready ? "<span>Open this page on claude.ai, signed in, to see the board</span>" : "<span>Loading…</span>" })}</div></div></section>`).join("");
+      board.innerHTML = corkBoardHTML([], { hint: S.ready ? "<span>Open this page on claude.ai, signed in, to see the board</span>" : "<span>Loading…</span>" });
       return;
     }
-    keepFocus(() => { board.innerHTML = CORK_TOPIC_KEYS.map(corkQuadHTML).join(""); });
+    const notes = S.cork.notes.filter(corkPlaced);
+    keepFocus(() => { board.innerHTML = corkBoardHTML(notes); });
     queueFit();
   }
   function renderCorkPanel(P) {
@@ -1508,8 +1543,7 @@ button.dwin-text:hover { background: color-mix(in srgb, var(--fg) 7%, transparen
       if (!n) return;
       ev.preventDefault();
       const card = grip.closest(".card");
-      const anyCork = corkQuadEls()[0];
-      const cr = anyCork && anyCork.getBoundingClientRect();
+      const cr = corkQuadRect();
       const gw = cr && cr.width ? cr.width * noteWPct(cr) / 100 : 100;
       const ghost = document.createElement("div");
       ghost.className = "note-ghost";
@@ -1559,10 +1593,15 @@ button.dwin-text:hover { background: color-mix(in srgb, var(--fg) 7%, transparen
     if (!d.ghost) return;
     d.ghost.style.left = ev.clientX - d.gw / 2 + "px";
     d.ghost.style.top = ev.clientY - 12 + "px";
-    const hit = corkAt(ev);
-    const hitTopic = hit && hit.closest(".quad").dataset.topic;
+    const boardEl = corkBoardEl(), boardR = boardEl && overEl(boardEl, ev) ? boardEl.getBoundingClientRect() : null;
+    const hitTopic = boardR ? corkTopicAt(((ev.clientX - boardR.left) / boardR.width) * 100, ((ev.clientY - boardR.top) / boardR.height) * 100) : null;
     if (hitTopic !== d.overTopic) {
-      corkQuadEls().forEach((qEl) => qEl.classList.toggle("drop-target", qEl.closest(".quad").dataset.topic === hitTopic));
+      const hl = $("#corkDropHl");
+      if (hl) {
+        const o = hitTopic ? corkQuadOffset(hitTopic) : null;
+        hl.classList.toggle("show", !!hitTopic);
+        if (o) { hl.style.left = o.x + "%"; hl.style.top = o.y + "%"; }
+      }
       d.overTopic = hitTopic || null;
     }
     d.overTrash = overEl($("#trash"), ev);
@@ -1578,13 +1617,15 @@ button.dwin-text:hover { background: color-mix(in srgb, var(--fg) 7%, transparen
     document.body.classList.remove("carrying");
     $("#trash").classList.remove("hot");
     $("#panel").classList.remove("drop-target");
-    corkQuadEls().forEach((el) => el.classList.remove("drop-target"));
+    $("#corkDropHl")?.classList.remove("show");
     if (d.card) d.card.classList.remove("lifted");
     if (d.ghost) d.ghost.remove();
     if (!d.moved) return;
     if (!cancelled && d.overTopic) {
-      const el = corkElFor(d.overTopic), r = el.getBoundingClientRect();
-      const x = ((ev.clientX - r.left) / r.width) * 100 - noteWPct(r) / 2, y = ((ev.clientY - r.top) / r.height) * 100 - 2;
+      const boardEl = corkBoardEl(), r = boardEl.getBoundingClientRect();
+      const o = corkQuadOffset(d.overTopic), qr = { width: r.width / 2, height: r.height / 2 };
+      const bx = ((ev.clientX - r.left) / r.width) * 100, by = ((ev.clientY - r.top) / r.height) * 100;
+      const x = (bx - o.x) * 2 - noteWPct(qr) / 2, y = (by - o.y) * 2 - 2;
       pinCorkNote(d.id, d.overTopic, x, y);
       return;
     }
