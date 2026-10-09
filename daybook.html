@@ -575,15 +575,17 @@ body:not(.show-map) .page-map, body:not(.show-map) .page-cities { display: none;
   @keyframes panel-fade { from { opacity: 0; } to { opacity: 1; } }
 }
 
-/* The desk's open/close handle: a floating up-arrow at bottom-center (just the icon, a soft halo, no button chrome), hidden while the desk is open (the X inside it closes instead). */
+/* The desk's open/close handle: a floating up-arrow at bottom-center with a caption underneath (no button
+   chrome, just the icon, text and a soft halo), hidden while the desk is open (the X inside it closes instead). */
 .desk-fab {
   position: fixed; left: 50%; bottom: calc(30px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); z-index: 60;
-  width: 44px; height: 48px; border: 0; background: transparent; color: var(--accent);
-  display: grid; place-items: center;
+  border: 0; background: transparent; color: var(--accent); padding: 0;
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
   filter: drop-shadow(0 0 7px color-mix(in srgb, var(--accent) 60%, transparent));
 }
 .desk-fab:hover { color: var(--fg); }
 .desk-fab svg { width: 28px; height: 36px; }
+.desk-fab span { font-size: .74em; font-weight: 700; letter-spacing: .02em; white-space: nowrap; }
 .app:not(.desk-closed) .desk-fab { display: none; }
 
 /* Daily Update page: four equal windows at N/W/E/S, touching corner to corner, with a small canary in the gap. */
@@ -741,8 +743,9 @@ button.dwin-text:hover { background: color-mix(in srgb, var(--fg) 7%, transparen
     </button>
     <section id="panel" class="panel" aria-label="My desk"></section>
   </div>
-  <button type="button" class="desk-fab" data-act="desk-toggle" id="addBtn" aria-pressed="false" aria-label="Open my desk">
+  <button type="button" class="desk-fab" data-act="desk-toggle" id="addBtn" aria-pressed="false">
     <svg viewBox="0 0 24 32" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 30V13M5 13l7-7 7 7"/></svg>
+    <span>Open my desk</span>
   </button>
 </div>
 
