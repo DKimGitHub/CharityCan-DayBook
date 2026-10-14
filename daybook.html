@@ -47,6 +47,10 @@
   --radius: 12px;
   --dwin-bg: #f5f5f5;
 }
+/* Post-it text font, switchable in Settings; the handwritten default above is the "Current" option. */
+body[data-note-font="serif"] { --f-note: Georgia, Cambria, "Times New Roman", Times, serif; }
+body[data-note-font="sans"] { --f-note: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+body[data-note-font="mono"] { --f-note: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace; }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     --bg: #15211a; --surface: #1c2a21; --surface-2: #24362a; --line: #304636;
@@ -836,7 +840,9 @@ button.dwin-text:hover { background: color-mix(in srgb, var(--fg) 7%, transparen
   // preference (dailyOrder), rearranged the same way the board's quad positions are.
   const DAILY_POS_SLOTS = ["n", "w", "e", "s"];
   const DAILY_DEFAULT_ORDER = ["matt", "robert", "grace", "daniel"];
-  const DEFAULT_PREFS = { sound: true, map: false, accent: "teal", theme: "system", layout: "grid", size: "m", order: SEAT_KEYS.slice(), dailyOrder: DAILY_DEFAULT_ORDER.slice(), hidden: [], paper: "yellow" };
+  const DEFAULT_PREFS = { sound: true, map: false, accent: "teal", theme: "system", layout: "grid", size: "m", order: SEAT_KEYS.slice(), dailyOrder: DAILY_DEFAULT_ORDER.slice(), hidden: [], paper: "yellow", noteFont: "hand" };
+  // "hand" is the current handwritten font (the --f-note default); the rest are plain system font stacks.
+  const NOTE_FONTS = { hand: "Current", serif: "Serif", sans: "Sans-serif", mono: "Monospace" };
   // Cork is a shared corkboard: everyone can pin notes under any of these four topics (not one area per person).
   const CORK_TOPICS = [["logistics", "Admin"], ["sales", "Sales"], ["marketing", "Marketing"], ["development", "Development"]];
   const CORK_TOPIC_NAME = Object.fromEntries(CORK_TOPICS);
@@ -2035,6 +2041,7 @@ button.dwin-text:hover { background: color-mix(in srgb, var(--fg) 7%, transparen
     else if (HOST_THEME) root.setAttribute("data-theme", HOST_THEME);
     else root.removeAttribute("data-theme");
     document.body.dataset.size = p.size;
+    document.body.dataset.noteFont = NOTE_FONTS[p.noteFont] ? p.noteFont : "hand";
     document.body.classList.toggle("show-map", !!p.map);
   }
   let prefTimer, prefChain = Promise.resolve();
@@ -2771,6 +2778,7 @@ button.dwin-text:hover { background: color-mix(in srgb, var(--fg) 7%, transparen
         <div class="positions" role="group" aria-label="Daily Update positions">${dailyViewOrder().map((k, i) => `<button type="button" data-act="daily-swap" data-seat="${k}" aria-pressed="${S.dailySwapPick === k}">${esc(SEAT_NAME[k])}<small>${["North", "West", "East", "South"][i]}</small></button>`).join("")}</div>
         <span class="muted" style="font-size:.88em">${S.dailySwapPick ? `Now tap where ${esc(SEAT_NAME[S.dailySwapPick])} should go.` : ""}</span></div>
       <div class="group"><span class="lbl">New note color</span><div class="swatches">${Object.entries(PAPERS).map(([k, c]) => `<button class="swatch" type="button" data-act="pref" data-k="paper" data-v="${k}" aria-pressed="${p.paper === k}" aria-label="${k}" style="background:${c}"></button>`).join("")}</div></div>
+      <div class="group"><span class="lbl">Note font</span>${seg("noteFont", Object.entries(NOTE_FONTS))}</div>
       <div class="group"><span class="lbl">Accent</span><div class="swatches">${Object.entries(ACCENTS).map(([k, c]) => `<button class="swatch" type="button" data-act="pref" data-k="accent" data-v="${k}" aria-pressed="${p.accent === k}" aria-label="${k}" style="background:linear-gradient(135deg, ${c[0]} 50%, ${c[1]} 50%)"></button>`).join("")}</div></div>
       <div class="group"><span class="lbl">Background</span>${seg("map", [["false", "Plain"], ["true", "Map"]])}</div>
       <div class="group"><span class="lbl">Sounds</span>${seg("sound", [["true", "On"], ["false", "Off"]])}</div>
