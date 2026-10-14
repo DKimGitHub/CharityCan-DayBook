@@ -344,6 +344,32 @@ body:not(.show-map) .page-map, body:not(.show-map) .page-cities { display: none;
 .heart-who > span { display: flex; align-items: center; gap: 8px; white-space: nowrap; }
 .heart-who .av, .heart-who .av-thumb, .heart-who svg { width: 22px; height: 22px; flex: none; }
 .heart-who .hw-heart { color: #e0456a; width: 12px; height: 12px; }
+/* Done: a tick in the bottom-right corner of my own notes (where a teammate's note has its heart), shown on hover;
+   clicking it takes the note off the board as completed. If my note has hearts, their count slides left to make room. */
+.note .done-btn { position: absolute; right: calc(var(--nw) * .05); bottom: calc(var(--nw) * .04); display: grid; place-items: center;
+  width: max(18px, calc(var(--nw) * .17)); height: max(18px, calc(var(--nw) * .17)); border-radius: 50%; cursor: pointer;
+  color: rgba(40, 90, 50, .9); background: rgba(255, 255, 255, .55); box-shadow: 0 0 0 1px rgba(40, 90, 50, .35); opacity: 0; transition: opacity .15s, transform .15s; }
+.note .done-btn svg { width: 70%; height: 70%; }
+.note.own:hover .done-btn, .note.own:focus-visible .done-btn { opacity: 1; }
+.note .done-btn:hover { transform: scale(1.15); background: #dff3e2; }
+.note.own .heart { transition: opacity .15s, transform .15s, right .15s; }
+.note.own:hover .heart, .note.own:focus-visible .heart { right: calc(var(--nw) * .05 + max(18px, calc(var(--nw) * .17)) + 4px); }
+@media (hover: none) {
+  .note.own .done-btn { opacity: .85; }
+  .note.own .heart { right: calc(var(--nw) * .05 + max(18px, calc(var(--nw) * .17)) + 4px); }
+}
+.card-grip .done-x { border: 0; background: transparent; padding: 0; width: 18px; height: 18px; display: grid; place-items: center; border-radius: 50%; color: rgba(40, 90, 50, .85); cursor: pointer; }
+.card-grip .done-x:hover { background: rgba(40, 140, 60, .18); }
+.card-grip .done-x svg { width: 14px; height: 14px; }
+/* Done today: a hidden list on the desk, in the notes row's place, with a way to bring a note back. */
+.done-box { flex: none; height: var(--row-h); box-sizing: border-box; padding: 6px 2px 8px; overflow-y: auto; }
+.done-box ol { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.done-box li { display: grid; grid-template-columns: 10px minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 6px 2px; border-bottom: 1px solid var(--line); }
+.done-box li:last-child { border-bottom: 0; }
+.done-box .chip-dot { width: 10px; height: 10px; border-radius: 2px; background: var(--paper); box-shadow: 0 0 0 1px rgba(0, 0, 0, .2); }
+.done-box .t { text-decoration: line-through; color: var(--muted); overflow-wrap: anywhere; white-space: pre-wrap; }
+.done-box .empty-done { color: var(--faint); padding: 8px 2px; }
+.task.done .t { text-decoration: line-through; opacity: .6; }
 .note.own:active { cursor: grabbing; }
 .note.dragging { box-shadow: 0 2px 3px rgba(0, 0, 0, .2), 0 16px 22px -10px rgba(0, 0, 0, .55); transform: rotate(var(--rot, 0deg)) scale(1.04); z-index: 999 !important; }
 .note.dim { opacity: .3; }
@@ -871,6 +897,7 @@ button.dwin-text:hover { background: color-mix(in srgb, var(--fg) 7%, transparen
 
   const IC = {
     heart: '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 21s-7.5-4.6-9.6-9.2C.9 8.4 3 4.5 6.7 4.5c2.1 0 3.6 1.2 4.3 2.6h2c.7-1.4 2.2-2.6 4.3-2.6 3.7 0 5.8 3.9 4.3 7.3C19.5 16.4 12 21 12 21z"/></svg>',
+    check: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>',
     close: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>',
     plus: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>',
     flip: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9a8 8 0 0 1 14-3l2 2"/><path d="M20 4v4h-4"/><path d="M20 15a8 8 0 0 1-14 3l-2-2"/><path d="M4 20v-4h4"/></svg>',
@@ -1062,7 +1089,10 @@ button.dwin-text:hover { background: color-mix(in srgb, var(--fg) 7%, transparen
   }
   const notesOf = (d) => (d && Array.isArray(d.notes) ? d.notes : []);
   // A note stays on its owner's desk until it is pinned to the board.
-  const placed = (n) => typeof n.x === "number" && typeof n.y === "number";
+  // A completed note keeps its old spot (so it can be put back), but it's off the board and off the desk.
+  const placed = (n) => !n.done && typeof n.x === "number" && typeof n.y === "number";
+  const onDesk = (n) => !n.done && !placed(n);
+  const doneNotes = (d) => notesOf(d).filter((n) => n.done).sort((a, b) => a.done - b.done);
 
   /* ---------- rendering helpers ---------- */
   function keepFocus(fn) {
@@ -1116,7 +1146,8 @@ button.dwin-text:hover { background: color-mix(in srgb, var(--fg) 7%, transparen
     const heart = opts.react && !opts.own
       ? `<span class="heart${count ? " has" : ""}${mine ? " on" : ""}${S.heartPop === n.id ? " pop" : ""}" role="button" tabindex="0" data-act="heart" data-note="${esc(n.id)}" data-heart="${esc(n.id)}" aria-pressed="${mine}" aria-label="Heart this note${count ? ` (${count})` : ""}">${IC.heart}${count ? `<b>${count}</b>` : ""}</span>`
       : count ? `<span class="heart has static" data-heart="${esc(n.id)}" aria-label="${count} ${count === 1 ? "heart" : "hearts"}">${IC.heart}<b>${count}</b></span>` : "";
-    if (opts.own) return `<button type="button" class="${cls}" data-note="${esc(n.id)}" style="${style}" aria-label="Your note: ${esc(n.text || "empty")}. Drag or use arrow keys to move it. Enter takes it back to your desk.">${body}${heart}</button>`;
+    const done = opts.own ? `<span class="done-btn" data-act="note-done" data-note="${esc(n.id)}" title="Mark done" aria-hidden="true">${IC.check}</span>` : "";
+    if (opts.own) return `<button type="button" class="${cls}" data-note="${esc(n.id)}" style="${style}" aria-label="Your note: ${esc(n.text || "empty")}. Drag or use arrow keys to move it. Enter takes it back to your desk. D marks it done.">${done}${body}${heart}</button>`;
     return `<div class="${cls}" style="${style}">${body}${heart}</div>`;
   }
   function corkHTML(notes, opts = {}) {
@@ -1639,9 +1670,10 @@ button.dwin-text:hover { background: color-mix(in srgb, var(--fg) 7%, transparen
 
   /* ---------- my desk ---------- */
   const panelBusy = () => { const a = document.activeElement; return !!(a && $("#panel").contains(a) && (a.tagName === "TEXTAREA" || a.tagName === "INPUT")); };
-  function cardHTML(n) {
+  function cardHTML(n, opts = {}) {
+    const done = opts.done ? `<button type="button" class="done-x" data-act="note-done" data-note="${esc(n.id)}" title="Mark done" aria-label="Mark done">${IC.check}</button>` : "";
     return `<div class="card" data-card="${esc(n.id)}" style="--paper:${PAPERS[n.color] || PAPERS.yellow}">
-      <div class="card-grip" data-grip="${esc(n.id)}">${IC.grip}<span class="grow"></span></div>
+      <div class="card-grip" data-grip="${esc(n.id)}">${IC.grip}<span class="grow"></span>${done}</div>
       <textarea id="card-${esc(n.id)}" data-card-text="${esc(n.id)}" maxlength="400" aria-label="Note text">${esc(n.text || "")}</textarea>
       <div class="card-tools">${Object.entries(PAPERS).map(([k, c]) => `<button type="button" class="dot" data-act="card-color" data-id="${esc(n.id)}" data-color="${k}" style="--paper:${c}" aria-label="Make it ${k}" aria-pressed="${n.color === k}"></button>`).join("")}
         <button type="button" class="txt del-x" data-act="card-delete" data-id="${esc(n.id)}" aria-label="Remove note">${IC.close}</button></div>
@@ -1669,7 +1701,9 @@ button.dwin-text:hover { background: color-mix(in srgb, var(--fg) 7%, transparen
     if (S.page === "cork") { renderCorkPanel(P); return; }
     const today = myTodayDoc();
     const all = notesOf(today);
-    const notes = all.filter((n) => !placed(n));
+    const notes = all.filter(onDesk);
+    const finished = doneNotes(today);
+    if (!finished.length) S.doneOpen = false;
     const mine = myMessages().filter((m) => isToday(m.createdAt));
     P.className = "panel";
     keepFocus(() => {
@@ -1682,14 +1716,16 @@ button.dwin-text:hover { background: color-mix(in srgb, var(--fg) 7%, transparen
           <div class="desk-col-head"><span class="lbl">My notes</span>
             <button class="btn small primary" type="button" data-act="add-note">${IC.plus} New note</button>
             <button class="btn small" type="button" data-act="list-open" aria-expanded="${!!S.listOpen}">From a list</button>
-            ${all.length > notes.length ? `<button class="btn small" type="button" data-act="unpin-all">Take all back</button>` : ""}
-            ${notes.length ? `<button class="btn small" type="button" data-act="post-all">Post all</button>` : ""}</div>
-          ${S.listOpen ? `<div class="list-box">
+            ${all.some(placed) ? `<button class="btn small" type="button" data-act="unpin-all">Take all back</button>` : ""}
+            ${notes.length ? `<button class="btn small" type="button" data-act="post-all">Post all</button>` : ""}
+            ${finished.length ? `<button class="btn small" type="button" data-act="done-toggle" aria-expanded="${!!S.doneOpen}">${IC.check} Done today (${finished.length})</button>` : ""}</div>
+          ${S.doneOpen && !S.listOpen ? `<div class="done-box"><ol>${finished.map((n) => `<li><span class="chip-dot" style="--paper:${PAPERS[n.color] || PAPERS.yellow}"></span><span class="t">${esc(n.text || "(empty note)")}</span><button class="btn small" type="button" data-act="note-undone" data-note="${esc(n.id)}">Put back</button></li>`).join("")}</ol></div>`
+          : S.listOpen ? `<div class="list-box">
             <label class="lbl" for="in-list">One note per line</label>
             <textarea id="in-list" class="field" rows="4">${esc(S.listDraft || "")}</textarea>
             <div class="list-actions"><button class="btn small primary" type="button" data-act="list-make" id="list-make">${listLabel(S.listDraft || "")}</button>
               <button class="btn small" type="button" data-act="list-cancel">Cancel</button></div>
-          </div>` : `<div class="note-row" id="note-row">${notes.map(cardHTML).join("") ||
+          </div>` : `<div class="note-row" id="note-row">${notes.map((n) => cardHTML(n, { done: true })).join("") ||
             `<div class="empty"></div>`}</div>`}
         </div>`;
     });
@@ -2066,9 +2102,11 @@ button.dwin-text:hover { background: color-mix(in srgb, var(--fg) 7%, transparen
     const k = myToday(), days = S.days[S.myId];
     if (!canWrite() || !mySeat() || !days || myTodayDoc() || S.carried === k) return;
     const prev = days.find((d) => d.date < k);
-    if (!prev || !notesOf(prev).length) return;
+    // Notes marked done stay on that day (and in History); only unfinished ones come forward.
+    const keep = notesOf(prev).filter((n) => !n.done);
+    if (!prev || !keep.length) return;
     S.carried = k;
-    saveDay((d) => { d.notes = clone(notesOf(prev)); }, { panel: true, quiet: true });
+    saveDay((d) => { d.notes = clone(keep); }, { panel: true, quiet: true });
   }
   function saveDay(mut, opts = {}) {
     if (!canWrite()) return;
@@ -2200,7 +2238,7 @@ button.dwin-text:hover { background: color-mix(in srgb, var(--fg) 7%, transparen
   // Post every desk note to my area, each in the spot that overlaps least with what's already there.
   function postAll() {
     const doc = myTodayDoc();
-    const desk = notesOf(doc).filter((n) => !placed(n));
+    const desk = notesOf(doc).filter(onDesk);
     if (!desk.length) return;
     const cork = myCork();
     const r = cork && cork.getBoundingClientRect(), nw = noteWPct(r);
@@ -2339,6 +2377,23 @@ button.dwin-text:hover { background: color-mix(in srgb, var(--fg) 7%, transparen
   document.addEventListener("pointerup", (ev) => endDeskDrag(ev, false));
   document.addEventListener("pointercancel", (ev) => endDeskDrag(ev, true));
 
+  // Marking a note done takes it off the board (or desk) but keeps it in today's record, so History shows it crossed out.
+  function markDone(id) {
+    const n = notesOf(myTodayDoc()).find((x) => x.id === id);
+    if (!n || n.done) return;
+    saveDay((d) => { const v = d.notes.find((x) => x.id === id); if (v) v.done = Date.now(); }, { panel: true });
+    SFX.peel();
+    hideHeartWho();
+    toast("Marked done. It won't carry into tomorrow.", { label: "Undo", run: () => markUndone(id) });
+  }
+  function markUndone(id) {
+    const n = notesOf(myTodayDoc()).find((x) => x.id === id);
+    if (!n || !n.done) return;
+    // It goes back where it was: its old spot on the board if it had one, otherwise the desk.
+    const z = topZ();
+    saveDay((d) => { const v = d.notes.find((x) => x.id === id); if (v) { delete v.done; if (typeof v.x === "number") v.z = z; } }, { panel: true });
+    SFX.unpin();
+  }
   function removeNote(id, quiet) {
     const n = notesOf(myTodayDoc()).find((x) => x.id === id);
     if (!n) return;
@@ -2373,7 +2428,7 @@ button.dwin-text:hover { background: color-mix(in srgb, var(--fg) 7%, transparen
   /* ---------- dragging my notes on the board ---------- */
   document.addEventListener("pointerdown", (ev) => {
     const el = ev.target.closest(".note.own");
-    if (!el || ev.button > 0) return;
+    if (!el || ev.button > 0 || ev.target.closest(".done-btn")) return;
     const id = el.dataset.note;
     const n = notesOf(myTodayDoc()).find((x) => x.id === id);
     if (!n) return;
@@ -2486,7 +2541,8 @@ button.dwin-text:hover { background: color-mix(in srgb, var(--fg) 7%, transparen
   function historyDayHTML(d, opts) {
     const hl = (t) => (opts.mark ? opts.mark(t) : esc(t));
     const head = `<span class="day-when">${esc(fmtDay(d.date, opts.withYear))}</span>`;
-    const rows = boardOrder(notesOf(d).filter(placed)).map((n) => `<li class="task ${opts.match && !opts.match(n) ? "dim" : ""}"><span class="chip-dot" style="--paper:${PAPERS[n.color] || PAPERS.yellow}"></span><span class="t">${hl(n.text || "")}</span></li>`).join("");
+    // The day's board in reading order, then whatever was marked done that day, crossed out.
+    const rows = [...boardOrder(notesOf(d).filter(placed)), ...doneNotes(d)].map((n) => `<li class="task${n.done ? " done" : ""} ${opts.match && !opts.match(n) ? "dim" : ""}"${n.done ? ` title="Done"` : ""}><span class="chip-dot" style="--paper:${PAPERS[n.color] || PAPERS.yellow}"></span><span class="t">${hl(n.text || "")}</span></li>`).join("");
     return `<article class="day">${head}${rows ? `<ol class="tasklist">${rows}</ol>` : ""}</article>`;
   }
   // History is a card-file drawer: days stand side by side, oldest on the left, with a manila divider
@@ -2808,7 +2864,7 @@ button.dwin-text:hover { background: color-mix(in srgb, var(--fg) 7%, transparen
       case "board-zoom": openBoardZoom(b.dataset.date); break;
       case "zoom-close": closeBoardZoom(); break;
       case "unpin-all": if (S.page === "cork") unpinAllCork(); else unpinAll(); break;
-      case "list-open": S.listOpen = !S.listOpen; renderPanel(); if (S.listOpen) $("#in-list")?.focus(); break;
+      case "list-open": S.listOpen = !S.listOpen; if (S.listOpen) S.doneOpen = false; renderPanel(); if (S.listOpen) $("#in-list")?.focus(); break;
       case "list-cancel": S.listOpen = false; S.listDraft = ""; renderPanel(); break;
       case "list-make": if (S.page === "cork") makeCorkFromList(); else makeFromList(); break;
       case "av-pick": { const c = S.avBatch && S.avBatch[+b.dataset.i]; if (c) { setAvatar({ ...c }); SFX.boop(); } break; }
@@ -2834,6 +2890,9 @@ button.dwin-text:hover { background: color-mix(in srgb, var(--fg) 7%, transparen
         card.querySelectorAll(".dot").forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
         break;
       }
+      case "note-done": ev.preventDefault(); markDone(b.dataset.note); break;
+      case "note-undone": markUndone(b.dataset.note); break;
+      case "done-toggle": S.doneOpen = !S.doneOpen; if (S.doneOpen) S.listOpen = false; SFX.tick(); renderPanel(); break;
       case "card-delete": if (S.page === "cork") removeCorkNote(b.dataset.id); else removeNote(b.dataset.id); break;
       case "drawer-pick": {
         const items = S.history.items || [];
@@ -2907,6 +2966,7 @@ button.dwin-text:hover { background: color-mix(in srgb, var(--fg) 7%, transparen
         return;
       }
       if (ev.key === "Delete" || ev.key === "Backspace") { ev.preventDefault(); removeNote(id); return; }
+      if (ev.key === "d" || ev.key === "D") { ev.preventDefault(); markDone(id); return; }
       if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); unpinNote(id); return; }
     }
     if (t.id === "drawer" && ["ArrowLeft", "ArrowRight", "Home", "End"].includes(ev.key)) {
