@@ -318,7 +318,7 @@ body:not(.show-map) .page-map, body:not(.show-map) .page-cities { display: none;
   position: absolute; width: var(--nw); aspect-ratio: 1 / 1; box-sizing: border-box;
   padding: max(calc(var(--nw) * .19), 12px) calc(var(--nw) * .094) calc(var(--nw) * .094); border: 0; text-align: left;
   background: var(--paper, #fff3a3); color: var(--paper-ink);
-  font-family: var(--f-note); font-size: calc(var(--nw) * .1 * var(--note-scale)); line-height: 1.18;
+  font-family: var(--f-note); font-size: calc(var(--nw) * .085 * var(--note-scale)); line-height: 1.18;
   box-shadow: 0 1px 1px rgba(0, 0, 0, .15), 0 6px 10px -6px rgba(0, 0, 0, .45);
   transform: rotate(var(--rot, 0deg)); transform-origin: 50% 0;
   overflow-wrap: anywhere; white-space: pre-wrap; overflow: hidden;
@@ -2014,8 +2014,8 @@ button.dwin-text:hover { background: color-mix(in srgb, var(--fg) 7%, transparen
     }
     if (!fits()) el.style.overflowWrap = "anywhere";
   }
-  const fitNote = (el) => fitText(el, el.clientWidth * .26 * noteScale());
-  const fitCard = (ta) => fitText(ta, ta.closest(".card").clientWidth * .2 * noteScale(), 10);
+  const fitNote = (el) => fitText(el, el.clientWidth * .22 * noteScale());
+  const fitCard = (ta) => fitText(ta, ta.closest(".card").clientWidth * .17 * noteScale(), 10);
   function fitAll() {
     document.querySelectorAll("#board .note").forEach(fitNote);
     document.querySelectorAll(".card textarea").forEach(fitCard);
