@@ -846,12 +846,15 @@ button.dwin-text:hover { background: color-mix(in srgb, var(--fg) 7%, transparen
   };
 
   /* ---------- dates ---------- */
-  function keyIn(tz) {
-    const d = new Date();
+  function keyAt(ms, tz) {
+    const d = new Date(ms);
     try { return new Intl.DateTimeFormat("en-CA", { timeZone: tz, year: "numeric", month: "2-digit", day: "2-digit" }).format(d); }
     catch (e) { const p = (n) => String(n).padStart(2, "0"); return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`; }
   }
+  const keyIn = (tz) => keyAt(Date.now(), tz);
   const myToday = () => keyIn(MY_TZ);
+  // Whether a timestamp falls on my current local day, so yesterday's chat messages can fall away on their own.
+  const isToday = (ms) => keyAt(ms, MY_TZ) === myToday();
   const keyMs = (k) => Date.parse(k + "T00:00:00Z");
   function fmtDay(k, withYear) {
     const o = { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" };
@@ -1667,7 +1670,7 @@ button.dwin-text:hover { background: color-mix(in srgb, var(--fg) 7%, transparen
     const today = myTodayDoc();
     const all = notesOf(today);
     const notes = all.filter((n) => !placed(n));
-    const mine = myMessages();
+    const mine = myMessages().filter((m) => isToday(m.createdAt));
     P.className = "panel";
     keepFocus(() => {
       P.innerHTML = `<div class="desk-col">
@@ -2136,10 +2139,11 @@ button.dwin-text:hover { background: color-mix(in srgb, var(--fg) 7%, transparen
     S.messages = merged;
   }
   const myMessages = () => S.messages.filter((m) => m.authorId === S.myId);
-  // What shows in someone's speech bubble on the board is simply their most recent message.
+  // What shows in someone's speech bubble on the board is their most recent message from today; once a new
+  // day starts, yesterday's message falls away on its own (it's still there in History, just not on the board).
   function latestMessageFrom(authorId) {
     let best = null;
-    for (const m of S.messages) if (m.authorId === authorId && (!best || m.createdAt > best.createdAt)) best = m;
+    for (const m of S.messages) if (m.authorId === authorId && isToday(m.createdAt) && (!best || m.createdAt > best.createdAt)) best = m;
     return best;
   }
   function postMessage(text) {
