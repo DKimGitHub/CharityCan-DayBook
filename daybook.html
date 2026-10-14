@@ -2031,7 +2031,7 @@ button.dwin-text:hover { background: color-mix(in srgb, var(--fg) 7%, transparen
 
   /* ---------- prefs ---------- */
   function applyPrefs() {
-    Object.assign(S.prefs, { theme: "system", layout: "grid", size: "m", hidden: [] });  // no longer adjustable
+    Object.assign(S.prefs, { theme: "system", layout: "grid", hidden: [] });  // no longer adjustable
     const p = S.prefs;
     const acc = ACCENTS[p.accent] || ACCENTS.teal;
     const root = document.documentElement;
@@ -2779,6 +2779,7 @@ button.dwin-text:hover { background: color-mix(in srgb, var(--fg) 7%, transparen
         <span class="muted" style="font-size:.88em">${S.dailySwapPick ? `Now tap where ${esc(SEAT_NAME[S.dailySwapPick])} should go.` : ""}</span></div>
       <div class="group"><span class="lbl">New note color</span><div class="swatches">${Object.entries(PAPERS).map(([k, c]) => `<button class="swatch" type="button" data-act="pref" data-k="paper" data-v="${k}" aria-pressed="${p.paper === k}" aria-label="${k}" style="background:${c}"></button>`).join("")}</div></div>
       <div class="group"><span class="lbl">Note font</span>${seg("noteFont", Object.entries(NOTE_FONTS))}</div>
+      <div class="group"><span class="lbl">Note text size</span>${seg("size", [["s", "Small"], ["m", "Medium"], ["l", "Large"]])}</div>
       <div class="group"><span class="lbl">Accent</span><div class="swatches">${Object.entries(ACCENTS).map(([k, c]) => `<button class="swatch" type="button" data-act="pref" data-k="accent" data-v="${k}" aria-pressed="${p.accent === k}" aria-label="${k}" style="background:linear-gradient(135deg, ${c[0]} 50%, ${c[1]} 50%)"></button>`).join("")}</div></div>
       <div class="group"><span class="lbl">Background</span>${seg("map", [["false", "Plain"], ["true", "Map"]])}</div>
       <div class="group"><span class="lbl">Sounds</span>${seg("sound", [["true", "On"], ["false", "Off"]])}</div>
